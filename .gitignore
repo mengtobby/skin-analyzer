@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+node_modules/
+frontend/dist/
+backend/models/*.task
+backend/models/*.onnx
+backend/models/*.engine
+*.log
+.DS_Store
