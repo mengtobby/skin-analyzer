@@ -47,7 +47,34 @@ def test_mixed_lesion_evidence(kb: KnowledgeBase) -> None:
               replace(track(DetectionClass.PUSTULE, FaceZone.LEFT_CHEEK), track_id=3)]
     report = generate_report(tracks, None, kb)
     assert report.findings[0].evidence == (
-        "3 inflamed lesions tracked (2 papules, 1 pustule) on chin, left cheek"
+        "3 inflamed lesions tracked (2 papules, 1 pustule) on left cheek, chin"
+    )
+
+
+def test_evidence_zones_follow_anatomical_order(kb: KnowledgeBase) -> None:
+    tracks = [track(), replace(track(zone=FaceZone.FOREHEAD), track_id=2)]
+    finding = generate_report(tracks, None, kb).findings[0]
+    assert finding.zones == (FaceZone.FOREHEAD, FaceZone.CHIN)
+    assert finding.evidence == (
+        "2 inflamed lesions tracked (2 papules) on forehead, chin"
+    )
+
+
+def test_lesion_evidence_excludes_metric_only_zones(kb: KnowledgeBase) -> None:
+    m = SkinMetrics(ZoneMetrics(61, 0, 0, 0), {
+        FaceZone.FOREHEAD: ZoneMetrics(80, 0, 0, 0),
+    })
+    tracks = [track(DetectionClass.DIFFUSE_REDNESS, FaceZone.NOSE),
+              replace(track(DetectionClass.DIFFUSE_REDNESS, FaceZone.CHIN,
+                            confirmed=False), track_id=2),
+              replace(track(zone=FaceZone.LEFT_CHEEK), track_id=3)]
+    report = generate_report(tracks, m, kb)
+    finding = next(f for f in report.findings if f.condition == "diffuse_redness")
+    assert finding.count == 1
+    assert finding.zones == (FaceZone.FOREHEAD, FaceZone.NOSE)
+    assert finding.evidence == (
+        "1 area of diffuse redness tracked on nose; "
+        "Redness index 61/100 across the face"
     )
 
 
