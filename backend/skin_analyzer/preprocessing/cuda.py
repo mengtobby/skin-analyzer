@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from .base import Gains, PreprocessResult, SpecularParams
-from .cpu import estimate_wb_gains, specular_mask_from_hsv, suppress_specular
+from .cpu import estimate_wb_gains, specular_mask_from_hsv, suppress_specular, validate_roi_mask
 
 try:  # pragma: no cover - exercised only on CUDA machines
     import cupy as cp
@@ -79,7 +79,11 @@ class CudaPreprocessor:  # pragma: no cover - requires NVIDIA hardware
     def estimate_gains(self, bgr: np.ndarray) -> Gains:
         return estimate_wb_gains(bgr)
 
-    def process(self, bgr: np.ndarray, wb_gains: Gains | None = None) -> PreprocessResult:
+    def process(
+        self, bgr: np.ndarray, wb_gains: Gains | None = None,
+        roi_mask: np.ndarray | None = None,
+    ) -> PreprocessResult:
+        validate_roi_mask(bgr, roi_mask)
         gains = wb_gains if wb_gains is not None else self.estimate_gains(bgr)
         h, w = bgr.shape[:2]
         n = h * w
@@ -100,13 +104,17 @@ class CudaPreprocessor:  # pragma: no cover - requires NVIDIA hardware
             cp.asnumpy(d_v_local),
             self._specular,
         )
+        if roi_mask is not None:
+            mask &= roi_mask
         balanced = cp.asnumpy(d_bgr)
         lab = cp.asnumpy(d_lab)
         if self._suppress and mask.any():
-            balanced = suppress_specular(balanced, mask)
-            # Only the glare pixels changed; recompute their LAB on the CPU.
+            original = balanced
+            balanced = suppress_specular(balanced, mask, roi_mask)
+            changed = np.any(balanced != original, axis=2)
+            # Include the dilated glare boundary when recomputing LAB.
             from .cpu import bgr_to_lab
 
-            lab = lab.copy()
-            lab[mask] = bgr_to_lab(balanced[mask].reshape(-1, 1, 3)).reshape(-1, 3)
+            if changed.any():
+                lab[changed] = bgr_to_lab(balanced[changed].reshape(-1, 1, 3)).reshape(-1, 3)
         return PreprocessResult(bgr=balanced, lab=lab, specular_mask=mask, wb_gains=gains)

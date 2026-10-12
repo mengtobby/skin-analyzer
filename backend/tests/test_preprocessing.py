@@ -89,3 +89,76 @@ def test_cuda_matches_cpu_when_available():
     gpu_res = cuda.CudaPreprocessor(suppress_specular=False).process(img, wb_gains=gains)
     np.testing.assert_allclose(gpu_res.lab, cpu_res.lab, atol=1.0)
     assert (gpu_res.specular_mask != cpu_res.specular_mask).mean() < 0.001
+
+
+def _bright_background_scene():
+    image = np.full((416, 320, 3), 255, np.uint8)
+    roi = np.zeros(image.shape[:2], bool)
+    roi[80:330, 70:250] = True
+    image[roi] = (120, 140, 190)
+    image[170:176, 150:156] = 252
+    return image, roi
+
+
+@pytest.mark.parametrize("suppress", [True, False])
+def test_roi_excludes_background_glare(suppress):
+    image, roi = _bright_background_scene()
+    before = image.copy()
+    result = CpuPreprocessor(suppress_specular=suppress).process(
+        image, wb_gains=(1, 1, 1), roi_mask=roi
+    )
+    assert result.specular_mask[172, 152]
+    assert not result.specular_mask[~roi].any()
+    np.testing.assert_array_equal(result.bgr[~roi], image[~roi])
+    np.testing.assert_array_equal(image, before)
+
+
+def test_roi_clips_inpainting_dilation():
+    image = np.full((40, 40, 3), (120, 140, 190), np.uint8)
+    roi = np.zeros((40, 40), bool)
+    roi[10:30, 10:30] = True
+    image[10:13, 10:13] = 252
+    result = CpuPreprocessor().process(image, wb_gains=(1, 1, 1), roi_mask=roi)
+    np.testing.assert_array_equal(result.bgr[~roi], image[~roi])
+
+
+@pytest.mark.parametrize("roi", [np.zeros((4, 4), bool), np.zeros((8, 8), np.uint8)])
+def test_invalid_roi_is_rejected(roi):
+    with pytest.raises(ValueError, match="roi_mask"):
+        CpuPreprocessor().process(np.zeros((8, 8, 3), np.uint8), roi_mask=roi)
+
+
+def test_empty_roi_reports_no_glare():
+    image = np.full((40, 40, 3), 255, np.uint8)
+    result = CpuPreprocessor().process(
+        image, wb_gains=(1, 1, 1), roi_mask=np.zeros((40, 40), bool)
+    )
+    assert not result.specular_mask.any()
+    np.testing.assert_array_equal(result.bgr, image)
+
+
+@pytest.mark.parametrize("seed", [0, 3, 9])
+def test_subsampled_wb_matches_full_resolution(seed):
+    rng = np.random.default_rng(seed)
+    neutral = rng.uniform(60, 235, (416, 320, 1))
+    image = np.clip(neutral * np.array([0.8, 1.0, 1.15]), 0, 255).astype(np.uint8)
+    pixels = image.reshape(-1, 3)
+    pixels = pixels[(pixels < 250).all(axis=1)]
+    full = np.percentile(pixels, 97, axis=0)
+    expected = np.clip(full[1] / np.maximum(full, 1), 1 / 1.5, 1.5)
+    np.testing.assert_allclose(estimate_wb_gains(image), expected, rtol=0.01)
+
+
+def test_roi_preprocessing_timing():
+    from time import perf_counter
+
+    image, roi = _bright_background_scene()
+    preprocessor = CpuPreprocessor()
+    preprocessor.process(image, roi_mask=roi)
+    timings = []
+    for _ in range(20):
+        start = perf_counter()
+        for _ in range(5):
+            preprocessor.process(image, roi_mask=roi)
+        timings.append((perf_counter() - start) / 5)
+    assert min(timings) < 0.006
