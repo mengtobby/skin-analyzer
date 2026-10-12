@@ -1,0 +1,284 @@
+[
+  {
+    "id": "pc_bha",
+    "name": "2% BHA Liquid Exfoliant",
+    "brand": "Paula's Choice",
+    "category": "toner",
+    "routine": "PM",
+    "actives": [
+      "salicylic_acid"
+    ],
+    "key_actives": [
+      "Salicylic acid 2%"
+    ]
+  },
+  {
+    "id": "ordinary_niacinamide",
+    "name": "Niacinamide 10% + Zinc 1%",
+    "brand": "The Ordinary",
+    "category": "serum",
+    "routine": "AM/PM",
+    "actives": [
+      "niacinamide",
+      "zinc_pca"
+    ],
+    "key_actives": [
+      "Niacinamide 10%",
+      "Zinc PCA"
+    ]
+  },
+  {
+    "id": "effaclar_duo_us",
+    "name": "Effaclar Duo Dual Action Acne Treatment (US)",
+    "brand": "La Roche-Posay",
+    "category": "treatment",
+    "routine": "PM",
+    "actives": [
+      "benzoyl_peroxide"
+    ],
+    "key_actives": [
+      "Benzoyl peroxide 5.5% (US formula; regional formulas differ)"
+    ]
+  },
+  {
+    "id": "differin",
+    "name": "Adapalene Gel 0.1%",
+    "brand": "Differin",
+    "category": "treatment",
+    "routine": "PM",
+    "actives": [
+      "adapalene"
+    ],
+    "key_actives": [
+      "Adapalene 0.1%"
+    ]
+  },
+  {
+    "id": "cerave_cream",
+    "name": "Moisturizing Cream",
+    "brand": "CeraVe",
+    "category": "moisturizer",
+    "routine": "AM/PM",
+    "actives": [
+      "ceramides",
+      "hyaluronic_acid"
+    ],
+    "key_actives": [
+      "Ceramides",
+      "Hyaluronic acid"
+    ]
+  },
+  {
+    "id": "ordinary_azelaic",
+    "name": "Azelaic Acid Suspension 10%",
+    "brand": "The Ordinary",
+    "category": "treatment",
+    "routine": "AM/PM",
+    "actives": [
+      "azelaic_acid"
+    ],
+    "key_actives": [
+      "Azelaic acid 10%"
+    ]
+  },
+  {
+    "id": "cicaplast",
+    "name": "Cicaplast Baume B5",
+    "brand": "La Roche-Posay",
+    "category": "moisturizer",
+    "routine": "AM/PM",
+    "actives": [
+      "panthenol",
+      "centella_asiatica"
+    ],
+    "key_actives": [
+      "Panthenol",
+      "Madecassoside (Centella-derived)"
+    ]
+  },
+  {
+    "id": "eltamd_clear",
+    "name": "UV Clear Broad-Spectrum SPF 46",
+    "brand": "EltaMD",
+    "category": "sunscreen",
+    "routine": "AM",
+    "actives": [
+      "sunscreen_spf30",
+      "niacinamide"
+    ],
+    "key_actives": [
+      "Broad-spectrum SPF 46",
+      "Niacinamide"
+    ]
+  },
+  {
+    "id": "cerave_hydrating",
+    "name": "Hydrating Facial Cleanser",
+    "brand": "CeraVe",
+    "category": "cleanser",
+    "routine": "AM/PM",
+    "actives": [
+      "ceramides",
+      "hyaluronic_acid"
+    ],
+    "key_actives": [
+      "Ceramides",
+      "Hyaluronic acid"
+    ]
+  },
+  {
+    "id": "cerave_sa",
+    "name": "Renewing SA Cleanser",
+    "brand": "CeraVe",
+    "category": "cleanser",
+    "routine": "AM/PM",
+    "actives": [
+      "salicylic_acid",
+      "ceramides",
+      "niacinamide"
+    ],
+    "key_actives": [
+      "Salicylic acid",
+      "Ceramides",
+      "Niacinamide"
+    ]
+  },
+  {
+    "id": "hada_labo",
+    "name": "Gokujyun Premium Lotion",
+    "brand": "Hada Labo",
+    "category": "toner",
+    "routine": "AM/PM",
+    "actives": [
+      "hyaluronic_acid"
+    ],
+    "key_actives": [
+      "Hyaluronic acid humectants"
+    ]
+  },
+  {
+    "id": "ordinary_glycolic",
+    "name": "Glycolic Acid 7% Exfoliating Toner",
+    "brand": "The Ordinary",
+    "category": "toner",
+    "routine": "PM",
+    "actives": [
+      "glycolic_acid"
+    ],
+    "key_actives": [
+      "Glycolic acid 7%"
+    ]
+  },
+  {
+    "id": "cerave_retinol",
+    "name": "Resurfacing Retinol Serum",
+    "brand": "CeraVe",
+    "category": "serum",
+    "routine": "PM",
+    "actives": [
+      "retinol",
+      "ceramides",
+      "niacinamide"
+    ],
+    "key_actives": [
+      "Retinol",
+      "Ceramides",
+      "Niacinamide"
+    ]
+  },
+  {
+    "id": "inkey_tranexamic",
+    "name": "Tranexamic Acid Serum",
+    "brand": "The Inkey List",
+    "category": "serum",
+    "routine": "PM",
+    "actives": [
+      "tranexamic_acid"
+    ],
+    "key_actives": [
+      "Tranexamic acid"
+    ]
+  },
+  {
+    "id": "timeless_c",
+    "name": "20% Vitamin C + E Ferulic Acid Serum",
+    "brand": "Timeless",
+    "category": "serum",
+    "routine": "AM",
+    "actives": [
+      "vitamin_c"
+    ],
+    "key_actives": [
+      "Vitamin C 20%",
+      "Vitamin E",
+      "Ferulic acid"
+    ]
+  },
+  {
+    "id": "cicapair",
+    "name": "Cicapair Tiger Grass Cream",
+    "brand": "Dr. Jart+",
+    "category": "moisturizer",
+    "routine": "AM/PM",
+    "actives": [
+      "centella_asiatica"
+    ],
+    "key_actives": [
+      "Centella asiatica"
+    ]
+  },
+  {
+    "id": "anthelios",
+    "name": "Anthelios Melt-in Milk Sunscreen SPF 60",
+    "brand": "La Roche-Posay",
+    "category": "sunscreen",
+    "routine": "AM",
+    "actives": [
+      "sunscreen_spf30"
+    ],
+    "key_actives": [
+      "Broad-spectrum SPF 60"
+    ]
+  },
+  {
+    "id": "hydro_boost",
+    "name": "Hydro Boost Water Gel",
+    "brand": "Neutrogena",
+    "category": "moisturizer",
+    "routine": "AM/PM",
+    "actives": [
+      "hyaluronic_acid"
+    ],
+    "key_actives": [
+      "Hyaluronic acid"
+    ]
+  },
+  {
+    "id": "ordinary_lactic",
+    "name": "Lactic Acid 5% + HA",
+    "brand": "The Ordinary",
+    "category": "serum",
+    "routine": "PM",
+    "actives": [
+      "lactic_acid",
+      "hyaluronic_acid"
+    ],
+    "key_actives": [
+      "Lactic acid 5%",
+      "Hyaluronic acid"
+    ]
+  },
+  {
+    "id": "panoxyl",
+    "name": "Acne Creamy Wash 4%",
+    "brand": "PanOxyl",
+    "category": "cleanser",
+    "routine": "AM/PM",
+    "actives": [
+      "benzoyl_peroxide"
+    ],
+    "key_actives": [
+      "Benzoyl peroxide 4%"
+    ]
+  }
+]
