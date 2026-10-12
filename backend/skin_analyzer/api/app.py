@@ -8,16 +8,71 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..config import Settings
 from ..pipeline import PipelineRunner, build_default_runner
 
 logger = logging.getLogger(__name__)
+
+
+def _host_name(authority: str) -> str | None:
+    try:
+        parsed = urlsplit(f"//{authority}")
+        parsed.port  # Validate an optional port before trusting the hostname.
+        if (not authority or parsed.username is not None or parsed.password is not None
+                or parsed.path or parsed.query or parsed.fragment
+                or any(character.isspace() for character in authority)):
+            return None
+        return parsed.hostname
+    except ValueError:
+        return None
+
+
+class _TrustedHostMiddleware:
+    def __init__(self, app: ASGIApp, trusted_hosts: set[str]) -> None:
+        self.app = app
+        self.trusted_hosts = trusted_hosts
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in {"http", "websocket"}:
+            hosts = Headers(scope=scope).getlist("host")
+            if len(hosts) != 1 or _host_name(hosts[0]) not in self.trusted_hosts:
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                else:
+                    response = JSONResponse(status_code=400, content={
+                        "success": False, "data": None, "error": "Host not allowed"})
+                    await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
+def _trusted_settings(settings: Settings) -> tuple[set[str], set[str]]:
+    origins = {"http://localhost:5173", "http://127.0.0.1:5173",
+               f"http://localhost:{settings.port}", f"http://127.0.0.1:{settings.port}",
+               f"http://[::1]:{settings.port}", *settings.extra_origins}
+    hosts = {"localhost", "127.0.0.1", "::1"}
+    if settings.host not in {"0.0.0.0", "::"}:
+        host = settings.host.strip("[]")
+        hosts.add(host.lower())
+        authority = f"[{host}]" if ":" in host else host
+        origins.add(f"http://{authority}:{settings.port}")
+    else:
+        logger.warning("Wildcard binding: only loopback hosts and hosts from --extra-origins "
+                       "are trusted; add the served browser origin with --extra-origins")
+    for origin in settings.extra_origins:
+        host = _host_name(urlsplit(origin).netloc)
+        if host is not None:
+            hosts.add(host)
+    return origins, hosts
 
 
 def _loopback(host: str) -> bool:
@@ -118,19 +173,16 @@ def create_app(settings: Settings | None = None, runner: PipelineRunner | None =
             await asyncio.to_thread(active.start)
             yield
         finally:
-            await asyncio.to_thread(active.stop)
+            await asyncio.to_thread(active.close if hasattr(active, "close") else active.stop)
 
     app = FastAPI(lifespan=lifespan)
     app.state.active_streams = 0
-    app.state.allowed_origins = {
-        "http://localhost:5173", "http://127.0.0.1:5173",
-        f"http://localhost:{settings.port}", f"http://127.0.0.1:{settings.port}",
-        *settings.extra_origins,
-    }
+    app.state.allowed_origins, trusted_hosts = _trusted_settings(settings)
     if runner is not None:
         app.state.runner = runner
     app.add_middleware(CORSMiddleware, allow_origins=list(app.state.allowed_origins),
                        allow_methods=["GET", "POST"], allow_headers=["*"])
+    app.add_middleware(_TrustedHostMiddleware, trusted_hosts=trusted_hosts)
     _register_routes(app)
     if settings.static_dir.is_dir():
         app.mount("/", StaticFiles(directory=str(settings.static_dir), html=True), name="frontend")

@@ -90,7 +90,7 @@ def ready(socket) -> bytes:
 
 def test_api_and_websocket() -> None:
     runner = FakeRunner()
-    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
         assert runner.started
         assert client.get("/api/health").json() == {
             "success": True, "data": {"status": "ok"}, "error": None}
@@ -107,7 +107,7 @@ def test_api_and_websocket() -> None:
 
 
 def test_multiple_websocket_clients() -> None:
-    with TestClient(create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
         with stream(client) as first:
             with stream(client) as second:
                 assert ready(first) == ready(second)
@@ -115,11 +115,11 @@ def test_multiple_websocket_clients() -> None:
 
 
 @pytest.mark.parametrize("origin", ["http://localhost:5173", "http://127.0.0.1:5173",
-                                    "http://localhost:8123", "http://127.0.0.1:8123",
+                                    "http://localhost:8123", "http://127.0.0.1:8123", "http://[::1]:8123",
                                     "https://trusted.example"])
 def test_allowed_origins(origin) -> None:
     settings = Settings(port=8123, extra_origins=("https://trusted.example",))
-    with TestClient(create_app(settings, FakeRunner())) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(settings, FakeRunner())) as client:
         with stream(client, {"origin": origin}) as socket:
             ready(socket)
         assert client.post("/api/reset", headers={"origin": origin}).status_code == 200
@@ -128,7 +128,7 @@ def test_allowed_origins(origin) -> None:
 @pytest.mark.parametrize("headers,host", [({"origin": "http://evil.example"}, "127.0.0.1"),
                                          ({}, "192.0.2.1"), ({}, "testclient")])
 def test_untrusted_websocket(headers, host) -> None:
-    with TestClient(create_app(Settings(), FakeRunner()), client=(host, 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), FakeRunner()), client=(host, 50000)) as client:
         with pytest.raises(WebSocketDisconnect) as exc:
             with client.websocket_connect("/ws/stream", headers=headers):
                 pytest.fail("untrusted connection accepted")
@@ -138,7 +138,7 @@ def test_untrusted_websocket(headers, host) -> None:
 
 def test_foreign_reset_origin() -> None:
     runner = FakeRunner()
-    with TestClient(create_app(Settings(), runner)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner)) as client:
         response = client.post("/api/reset", headers={"origin": "http://evil.example"})
         assert response.status_code == 403
         assert response.json()["success"] is False
@@ -147,7 +147,7 @@ def test_foreign_reset_origin() -> None:
 
 def test_report_delivery_and_new_frames() -> None:
     runner = FakeRunner()
-    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
         with stream(client) as socket:
             ready(socket)
             runner.report = (1, {"summary": "first"})
@@ -162,7 +162,7 @@ def test_report_delivery_and_new_frames() -> None:
 
 @pytest.mark.parametrize("kind", ["binary", "array", "invalid", "unsupported", "oversized", "unicode"])
 def test_invalid_messages(kind) -> None:
-    with TestClient(create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
         with stream(client) as socket:
             ready(socket)
             if kind in {"oversized", "unicode"}:
@@ -181,7 +181,7 @@ def test_invalid_messages(kind) -> None:
 
 
 def test_client_limit() -> None:
-    with TestClient(create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
         with ExitStack() as stack:
             for _ in range(8):
                 ready(stack.enter_context(stream(client)))
@@ -195,7 +195,7 @@ def test_client_limit() -> None:
 
 def test_runner_stop() -> None:
     runner = FakeRunner()
-    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
         with stream(client) as socket:
             ready(socket)
             runner.stop()
@@ -213,7 +213,7 @@ def test_rest_errors_are_generic(endpoint, monkeypatch) -> None:
 
     method = {"/api/health": "health", "/api/report": "latest_report", "/api/reset": "reset"}[endpoint]
     monkeypatch.setattr(runner, method, fail)
-    with TestClient(create_app(Settings(), runner)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner)) as client:
         response = client.post(endpoint) if endpoint.endswith("reset") else client.get(endpoint)
         assert response.json()["success"] is False
         assert "secret" not in response.text
@@ -222,7 +222,7 @@ def test_rest_errors_are_generic(endpoint, monkeypatch) -> None:
 def test_health_error_is_generic(monkeypatch) -> None:
     runner = FakeRunner()
     monkeypatch.setattr(runner, "health", lambda: {"status": "degraded", "error": "secret path"})
-    with TestClient(create_app(Settings(), runner)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner)) as client:
         assert client.get("/api/health").json()["data"]["error"] == "Pipeline unavailable"
 
 
@@ -255,7 +255,7 @@ def test_real_runner_websocket(monkeypatch) -> None:
     monkeypatch.setattr(analyzer, "process", lambda *_: FrameResult(None, [], None, {}))
     source = QueuedSource(image)
     runner = PipelineRunner(Settings(), source, analyzer, KnowledgeBase.load())
-    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
         with stream(client) as socket:
             assert socket.receive_json()["type"] == "status"
             source.frames.put((image, time.time(), 1))
@@ -270,7 +270,7 @@ def test_real_runner_websocket(monkeypatch) -> None:
 
 def test_disconnect_with_pending_frame() -> None:
     runner = FakeRunner()
-    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+    with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
         with stream(client) as socket:
             ready(socket)
             runner.version = 2
@@ -317,3 +317,69 @@ def test_browser_readiness_bypasses_proxies(monkeypatch) -> None:
     monkeypatch.setattr(entry.subprocess, "Popen", lambda *args, **kwargs: None)
     entry._open_browser("http://localhost:8000")
     assert handlers[0].proxies == {}
+
+
+@pytest.mark.parametrize("host", ["localhost", "127.0.0.1:8000", "[::1]", "[::1]:8000"])
+def test_trusted_hosts(host) -> None:
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(), FakeRunner()),
+                    base_url="http://localhost", client=("127.0.0.1", 50000)) as client:
+        assert client.get("/api/report", headers={"host": host}).status_code == 200
+        with stream(client, {"host": host}) as socket:
+            ready(socket)
+
+
+@pytest.mark.parametrize("host", ["evil.example", "evil.example:8000", "localhost@evil.example",
+                                   "localhost/evil", "localhost:bad", "localhost:65536"])
+def test_untrusted_hosts(host, tmp_path) -> None:
+    (tmp_path / "index.html").write_text("trusted frontend")
+    runner = FakeRunner()
+    settings = Settings(static_dir=tmp_path)
+    with TestClient(headers={"host": "localhost"}, app=create_app(settings, runner), base_url="http://localhost") as client:
+        for path in ("/api/report", "/api/health", "/"):
+            response = client.get(path, headers={"host": host})
+            assert response.status_code == 400
+            assert response.json() == {
+                "success": False, "data": None, "error": "Host not allowed"}
+        assert client.post("/api/reset", headers={"host": host}).status_code == 400
+        assert runner.resets == 0
+        with pytest.raises(WebSocketDisconnect) as exc:
+            with client.websocket_connect("/ws/stream", headers={"host": host,
+                                           "origin": "http://localhost:8000"}):
+                pytest.fail("untrusted host accepted")
+        assert exc.value.code == 1008
+
+
+@pytest.mark.parametrize("host,origin", [("192.168.1.5", "http://192.168.1.5:8000"),
+                                        ("::1", "http://[::1]:8000")])
+def test_served_origins(host, origin) -> None:
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(host=host), FakeRunner()), base_url=origin) as client:
+        assert client.post("/api/reset", headers={"origin": origin}).status_code == 200
+        with stream(client, {"origin": origin, "host": origin.split("//", 1)[1]}) as socket:
+            ready(socket)
+
+
+@pytest.mark.parametrize("bind_host", ["0.0.0.0", "::"])
+def test_wildcard_bind_trusts_explicit_origin_hosts(bind_host, caplog) -> None:
+    settings = Settings(host=bind_host, extra_origins=("https://trusted.example:8443",))
+    with TestClient(headers={"host": "localhost"}, app=create_app(settings, FakeRunner()), base_url="http://localhost") as client:
+        assert client.get("/api/report", headers={"host": "trusted.example"}).status_code == 200
+        with stream(client, {"host": "trusted.example:8443",
+                             "origin": "https://trusted.example:8443"}) as socket:
+            ready(socket)
+        assert "hosts from --extra-origins" in caplog.text
+        assert client.get("/api/report", headers={"host": bind_host}).status_code == 400
+        assert client.get("/api/report", headers={"host": "192.168.1.5"}).status_code == 400
+
+
+def test_runner_close_on_shutdown() -> None:
+    class ClosingRunner(FakeRunner):
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
+            self.stop()
+
+    runner = ClosingRunner()
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(), runner), base_url="http://localhost"):
+        assert runner.started and not runner.closed
+    assert runner.closed and runner.stopped
