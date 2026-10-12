@@ -74,7 +74,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO)
     if not _loopback(settings.host):
         logger.warning("CAMERA EXPOSED: binding to non-loopback host %s without authentication", settings.host)
-    if not settings.landmarker_model.is_file():
+    if settings.landmarker_model == Settings().landmarker_model:
         ensure_models(settings.landmarker_model.parent)
     if args.open_browser:
         host = "127.0.0.1" if settings.host in {"0.0.0.0", "::"} else settings.host

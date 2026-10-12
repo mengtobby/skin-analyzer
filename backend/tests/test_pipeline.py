@@ -258,7 +258,8 @@ def test_listeners_restart_and_stop(monkeypatch):
     assert runner.health()["landmarker"] == "fake"
     version = runner.latest_packet()[0]
     runner.stop()
-    assert notifications.get(timeout=5) is runner._thread
+    assert notifications.get(timeout=5) is threading.current_thread()
+    assert notifications.empty()
     assert not runner.is_running
     assert runner.wait_packet(version, 0.1) is None
     unsubscribe()
@@ -301,15 +302,67 @@ def test_stop_bounds_hung_read(monkeypatch, caplog):
         release.wait(10)
         return None
     monkeypatch.setattr(runner.source, "read", hang)
+    notifications = []
+    runner.add_listener(lambda: notifications.append(runner.is_running))
     runner.start()
     assert entered.wait(5)
     start = time.monotonic()
     try:
         runner.stop()
         assert time.monotonic() - start < 3.5
+        assert notifications == [False]
         assert "shutdown timed out" in caplog.text
         with pytest.raises(RuntimeError, match="has not stopped"):
             runner.start()
     finally:
         release.set()
         runner._thread.join(5)
+    assert notifications == [False]
+
+
+def test_wait_packet_wakes_on_stop(monkeypatch):
+    runner, _ = empty_runner(monkeypatch)
+    waiting, finished = threading.Event(), threading.Event()
+    results = []
+    original_wait = runner._condition.wait
+
+    def wait(timeout=None):
+        waiting.set()
+        return original_wait(timeout)
+
+    monkeypatch.setattr(runner._condition, "wait", wait)
+
+    def receive():
+        results.append(runner.wait_packet(0, 10))
+        finished.set()
+
+    thread = threading.Thread(target=receive, daemon=True)
+    thread.start()
+    assert waiting.wait(5)
+    start = time.monotonic()
+    runner.stop()
+    assert finished.wait(0.5)
+    assert time.monotonic() - start < 0.5
+    thread.join(1)
+    assert results == [None]
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_close_releases_resources_once(monkeypatch, caplog, fails):
+    runner, _ = empty_runner(monkeypatch)
+    calls = []
+
+    def close_landmarker():
+        calls.append("landmarker")
+        if fails:
+            raise RuntimeError("close failed")
+
+    monkeypatch.setattr(runner.analyzer.landmarker, "close", close_landmarker)
+    monkeypatch.setattr(runner.source, "close", lambda: calls.append("source"))
+    runner.close()
+    runner.close()
+    assert calls == ["source", "landmarker"]
+    if fails:
+        assert "Landmarker close failed" in caplog.text
+    with pytest.raises(RuntimeError, match="closed"):
+        runner.start()
