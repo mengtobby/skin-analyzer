@@ -60,13 +60,19 @@ bytes 4+N..end    JPEG of the display frame (may be empty only if encoding faile
     }
   ],
   "counts": {"papule": 2, "hyperpigmentation": 1},   // confirmed tracks per label
+  "analyzed": true,                  // preprocessing and quality assessment ran this frame
+  "quality": null | {
+    "ok": true, "score": 1.0, "issues": [],
+    "brightness": 65.4, "evenness": 3.2, "face_size_px": 180.0,
+    "yaw_deg": 0.0, "pitch_deg": 0.0
+  },
   "metrics": null | {
     "overall": {"redness": 41.2, "texture": 22.0, "oiliness": 35.5, "pigmentation": 18.3},
     "zones":   {"forehead": {"redness": ..., "texture": ..., "oiliness": ..., "pigmentation": ...}, ...}
   },
   "perf": {
     "fps": 24.8, "latency_ms": 31.2,
-    "stages_ms": {"landmarks": 8.1, "preprocess": 3.2, "detect": 9.5, "track": 0.3, "metrics": 2.0, "encode": 4.4}
+    "stages_ms": {"landmarks": 8.1, "preprocess": 3.2, "quality": 0.5, "detect": 9.5, "track": 0.3, "metrics": 2.0, "encode": 4.4}
   }
 }
 ```
@@ -79,6 +85,33 @@ bytes 4+N..end    JPEG of the display frame (may be empty only if encoding faile
 ### Client → server, text (JSON)
 
 - `{"type": "reset"}` — same as `POST /api/reset`.
+
+### Analysis cadence and capture quality
+
+Analysis runs every second frame by default, starting at frame index 0. Landmarks
+and face geometry update every frame. Confirmed tracks are reprojected at their
+filtered canonical centres without advancing lifecycle on skipped or rejected
+frames. Skipped frames reuse the last quality report and smoothed metrics.
+`analyzed` is true when preprocessing and quality assessment ran, including
+rejected frames where detection did not run. Unexecuted stages have zero timing.
+Without a face, `quality` is null and `analyzed` is false. Failed quality suppresses
+detection, tracker updates and metric smoothing; `metrics` stays null until a
+passing analysis.
+
+Quality `score` is in [0, 1], rounded to two decimals. Measurements are rounded
+to one decimal. `brightness` and `evenness` use CIELAB L* units; `face_size_px`
+is eye-corner distance. Yaw and pitch are approximate degrees.
+`issues` contains zero or more of these codes:
+
+| Code | Meaning / capture guidance |
+|------|----------------------------|
+| `too_dark` | Face is too dark; move into brighter light. |
+| `too_bright` | Face is overexposed; reduce direct light. |
+| `uneven_light` | Lighting differs across the face; use even frontal light. |
+| `too_far` | Face is too small; move closer to the camera. |
+| `turned_away` | Excessive yaw; face the camera. |
+| `tilted` | Excessive pitch; hold the face level toward the camera. |
+| `occluded` | Too little usable skin; uncover the face. |
 
 ## Report
 

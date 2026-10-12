@@ -16,7 +16,8 @@ def test_protocol_roundtrip() -> None:
     packet = encode_frame_message(header, image.tobytes())
     assert decode_frame_message(packet) == (header, image.tobytes())
     assert set(header) == {"type", "frame_id", "timestamp", "width", "height", "face",
-                           "tracks", "counts", "metrics", "perf"}
+                           "tracks", "counts", "metrics", "perf", "quality", "analyzed"}
+    assert header["quality"] is None and header["analyzed"] is False
     assert set(header["perf"]["stages_ms"]) == {
         "landmarks", "preprocess", "detect", "track", "metrics", "encode"}
     with pytest.raises(ValueError):
@@ -28,3 +29,18 @@ def test_protocol_roundtrip() -> None:
 def test_malformed_packet(packet: bytes) -> None:
     with pytest.raises(ValueError):
         decode_frame_message(packet)
+
+
+def test_quality_header_rounding_and_rejected_analysis() -> None:
+    from skin_analyzer.face import QualityReport
+
+    quality = QualityReport(False, .12345, ("too_dark", "occluded"),
+                            12.345, 4.567, 180.123, -2.345, 1.234, .5)
+    result = FrameResult(None, [], None, {"quality": 1.0}, quality)
+    header = build_frame_header(result, 0, 0, 20, 20)
+    assert header["analyzed"] is True
+    assert header["quality"] == {
+        "ok": False, "score": .12, "issues": ["too_dark", "occluded"],
+        "brightness": 12.3, "evenness": 4.6, "face_size_px": 180.1,
+        "yaw_deg": -2.3, "pitch_deg": 1.2}
+    assert decode_frame_message(encode_frame_message(header, b""))[0] == header

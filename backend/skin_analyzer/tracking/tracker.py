@@ -130,6 +130,13 @@ class LesionTracker:
                 logger.debug("Clearing lesion tracks after face loss")
             self._tracks.clear()
 
+    def project(self, frame: FaceFrame, timestamp: float) -> list[Track]:
+        """Reproject confirmed filtered tracks without advancing temporal state."""
+        if not math.isfinite(timestamp):
+            raise ValueError("Timestamp must be finite")
+        _validate_frame(frame)
+        return [self._output(t, frame) for _, t in sorted(self._tracks.items()) if t.confirmed]
+
     def _associate(self, tracks: dict[int, _Tracked], detections: Sequence[Detection],
                    measurements: list[tuple[Point, tuple[Point, ...], float]]) -> dict[int, int]:
         candidates: list[tuple[float, int, int]] = []
@@ -183,7 +190,10 @@ class LesionTracker:
         self._next_id += 1
 
     def _output(self, track: _Tracked, frame: FaceFrame) -> Track:
-        points = frame.to_image(np.asarray(track.contour))
+        contour = np.asarray(track.contour)
+        center = (contour.min(axis=0) + contour.max(axis=0)) / 2
+        contour = contour + np.asarray(track.state.mean[:2]) - center
+        points = frame.to_image(contour)
         minimum, maximum = points.min(axis=0), points.max(axis=0)
         bbox = (*minimum, *(maximum - minimum))
         return Track(track.track_id, track.label, track.confidence, tuple(float(x) for x in bbox),
