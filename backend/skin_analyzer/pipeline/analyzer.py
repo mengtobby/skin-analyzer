@@ -44,6 +44,7 @@ class FrameAnalyzer:
         self._metrics: SkinMetrics | None = None
         self._last_ok_timestamp: float | None = None
         self._last_good: tuple[list[Track], SkinMetrics | None] | None = None
+        self._face_lost_since: float | None = None
 
     def reset(self) -> None:
         self.tracker.reset()
@@ -55,6 +56,19 @@ class FrameAnalyzer:
         self._metrics = None
         self._last_ok_timestamp = None
         self._last_good = None
+        self._face_lost_since = None
+
+    def _note_face_lost(self, timestamp: float) -> None:
+        """Forget the last good analysis once the face has been gone past the timeout.
+
+        A returning face may belong to someone else, so stale findings must not be
+        republished for it; brief landmark dropouts keep the state.
+        """
+        if self._face_lost_since is None:
+            self._face_lost_since = timestamp
+        elif timestamp - self._face_lost_since > self.tracker.params.face_lost_timeout_s:
+            self._last_good = None
+            self._last_ok_timestamp = None
 
     def last_good(self) -> tuple[list[Track], SkinMetrics | None] | None:
         """Return the latest accepted analysis with an independent track list."""
@@ -73,6 +87,7 @@ class FrameAnalyzer:
         start = perf_counter()
         landmarks = self.landmarker.detect(frame_bgr, int(timestamp * 1000))
         if landmarks is None:
+            self._note_face_lost(timestamp)
             self._filter.reset()
             self._gains = None
             self._quality = None
@@ -83,6 +98,7 @@ class FrameAnalyzer:
             stages["track"] = (perf_counter() - start) * 1000
             self.smoother.update(None)
             return FrameResult(None, tracks, None, stages)
+        self._face_lost_since = None
         landmarks = np.asarray(landmarks)
         if landmarks.ndim != 2 or landmarks.shape[1] != 2 or landmarks.shape[0] < 468 or not np.isfinite(landmarks).all():
             raise ValueError("expected finite face landmarks with shape (N, 2), N >= 468")

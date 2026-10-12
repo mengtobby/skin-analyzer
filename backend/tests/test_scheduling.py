@@ -131,3 +131,36 @@ def test_turned_away_hides_tracks_immediately(monkeypatch):
     assert analyzer.tracker._tracks
     analyzer.analysis_every = 2
     assert not analyzer.process(image, .02).tracks
+
+
+def test_face_loss_past_timeout_invalidates_last_good(monkeypatch):
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    analyzer.analysis_every = 1
+    analyzer.process(image, 0)
+    assert analyzer.last_good() is not None
+    landmarks = analyzer.landmarker.landmarks
+    timeout = analyzer.tracker.params.face_lost_timeout_s
+    analyzer.landmarker.landmarks = None
+    analyzer.process(image, 0.1)
+    analyzer.process(image, 0.1 + timeout / 2)
+    assert analyzer.last_good() is not None  # brief dropout keeps the last good analysis
+    analyzer.process(image, 0.2 + timeout)
+    assert analyzer.last_good() is None  # a returning (possibly different) face starts fresh
+    analyzer.landmarker.landmarks = landmarks
+    dark = analyzer.process(np.zeros_like(image), 0.3 + timeout)
+    assert not dark.quality.ok and analyzer.last_good() is None
+
+
+def test_face_return_resets_loss_clock(monkeypatch):
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    analyzer.analysis_every = 1
+    analyzer.process(image, 0)
+    landmarks = analyzer.landmarker.landmarks
+    timeout = analyzer.tracker.params.face_lost_timeout_s
+    for start in (0.1, 0.1 + timeout):  # two short dropouts, separated by a returning face
+        analyzer.landmarker.landmarks = None
+        analyzer.process(image, start)
+        analyzer.process(image, start + timeout * 0.6)
+        analyzer.landmarker.landmarks = landmarks
+        analyzer.process(np.zeros_like(image), start + timeout * 0.7)
+    assert analyzer.last_good() is not None
