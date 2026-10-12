@@ -15,7 +15,7 @@ import webbrowser
 
 import uvicorn
 
-from .api.app import create_app
+from .api.app import _loopback, create_app
 from .config import Settings
 from .download_models import ensure_models
 
@@ -23,9 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 def _open_browser(url: str) -> None:
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     for _ in range(120):
         try:
-            with urllib.request.urlopen(url + "/api/health", timeout=1):
+            with opener.open(url + "/api/health", timeout=1):
                 break
         except OSError:
             time.sleep(0.5)
@@ -56,15 +57,23 @@ def main() -> None:
     parser.add_argument("--port", type=int)
     parser.add_argument("--detector", choices=("auto", "classical", "onnx"))
     parser.add_argument("--preprocess", choices=("auto", "cpu", "cuda"))
+    for name in ("width", "height", "fps", "jpeg-quality"):
+        parser.add_argument(f"--{name}", type=int)
+    parser.add_argument("--report-interval-s", type=float)
+    parser.add_argument("--extra-origins", type=lambda raw: tuple(
+        x.strip() for x in raw.split(",") if x.strip()))
     parser.add_argument("--no-mirror", action="store_true")
     parser.add_argument("--open", action="store_true", dest="open_browser")
     args = parser.parse_args()
     overrides = {key: getattr(args, key) for key in
-                 ("source", "host", "port", "detector", "preprocess") if getattr(args, key) is not None}
+                 ("source", "host", "port", "detector", "preprocess", "width", "height",
+                  "fps", "jpeg_quality", "report_interval_s", "extra_origins") if getattr(args, key) is not None}
     if args.no_mirror:
         overrides["mirror"] = False
     settings = replace(Settings.from_env(), **overrides)
     logging.basicConfig(level=logging.INFO)
+    if not _loopback(settings.host):
+        logger.warning("CAMERA EXPOSED: binding to non-loopback host %s without authentication", settings.host)
     if not settings.landmarker_model.is_file():
         ensure_models(settings.landmarker_model.parent)
     if args.open_browser:
