@@ -174,3 +174,17 @@ canvas {
 .controls button {
   margin-left: auto;
 }
+
+.quality-banner {
+  position: absolute;
+  inset: auto 12px 12px;
+  padding: 12px 16px;
+  background: #211b0f;
+  color: #ffe6a3;
+  border: 1px solid #ffb703;
+  max-height: calc(100% - 24px);
+  overflow: auto;
+}
+.quality-score { display: block; font-size: 14px; margin-top: 4px; }
+.quality-banner ul { margin: 8px 0 0; padding-inline-start: 20px; }
+.paused-metrics { opacity: 0.45; }

@@ -124,3 +124,23 @@ describe("useSkinStream", () => {
     expect(result.current.headerRef.current?.frame_id).toBe(2);
   });
 });
+
+it("clears errors on the next valid frame or message and clears telemetry on close", async () => {
+  const { result } = renderHook(() => useSkinStream());
+  const socket = MockSocket.instances[0];
+  act(() => socket.onopen?.());
+  await act(async () => { await socket.onmessage?.({ data: "broken" }); });
+  expect(result.current.error).toBeTruthy();
+  await act(async () => { await socket.onmessage?.({ data: encodeFrame() }); });
+  expect(result.current.error).toBeNull();
+  await act(async () => { await socket.onmessage?.({ data: "broken" }); });
+  await act(async () => {
+    await socket.onmessage?.({ data: JSON.stringify({ type: "status", data: healthFixture }) });
+  });
+  expect(result.current.error).toBeNull();
+  act(() => { vi.advanceTimersByTime(200); });
+  expect(result.current.header).toEqual(frameFixture);
+  act(() => socket.onclose?.());
+  expect(result.current.connection).toBe("reconnecting");
+  expect(result.current.header).toBeNull();
+});

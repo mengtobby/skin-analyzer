@@ -6,7 +6,7 @@ function context() {
   return {
     save: vi.fn(), restore: vi.fn(), scale: vi.fn(), beginPath: vi.fn(),
     moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), stroke: vi.fn(),
-    fill: vi.fn(), fillText: vi.fn(), globalAlpha: 1, strokeStyle: "", fillStyle: "",
+    fill: vi.fn(), fillText: vi.fn(), measureText: vi.fn(() => ({ width: 120 })),  globalAlpha: 1, strokeStyle: "", fillStyle: "",
   };
 }
 
@@ -42,4 +42,24 @@ describe("drawOverlay", () => {
       expect(ctx.fillText).toHaveBeenCalledTimes(["zones", "labels"].includes(enabled) ? 1 : 0);
     }
   });
+});
+
+it("keeps contours but suppresses overlapping and non-priority tags", () => {
+  const ctx = context();
+  const tracks = (["papule", "nodule", "texture_irregularity", "fine_lines", "diffuse_redness"] as const)
+    .map((label, id) => ({ ...frameFixture.tracks[0], label, id }));
+  drawOverlay(ctx as unknown as CanvasRenderingContext2D, { ...frameFixture, tracks }, 1,
+    { zones: false, masks: true, boxes: false, labels: true });
+  expect(ctx.stroke).toHaveBeenCalledTimes(5);
+  expect(ctx.fill).toHaveBeenCalledTimes(5);
+  expect(ctx.fillText).toHaveBeenCalledTimes(1);
+  expect(ctx.fillText.mock.calls[0][0]).toContain("nodule");
+});
+it("prefers confidence within the same priority", () => {
+  const ctx = context();
+  const tracks = [0.3, 0.9].map((confidence, id) => ({ ...frameFixture.tracks[0], confidence, id }));
+  drawOverlay(ctx as unknown as CanvasRenderingContext2D, { ...frameFixture, tracks }, 1,
+    { zones: false, masks: false, boxes: false, labels: true });
+  expect(ctx.fillText).toHaveBeenCalledTimes(1);
+  expect(ctx.fillText.mock.calls[0][0]).toBe("#1 papule 90%");
 });

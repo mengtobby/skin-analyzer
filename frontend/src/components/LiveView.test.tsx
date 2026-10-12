@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { LiveView } from "./LiveView";
-import { frameFixture } from "../protocol/fixtures";
+import { frameFixture, qualityFixture } from "../protocol/fixtures";
 
 beforeEach(() => {
   vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
@@ -41,7 +41,7 @@ it("draws ref-held frames at device pixel ratio and cancels its animation loop",
     setTransform: vi.fn(), clearRect: vi.fn(), save: vi.fn(), translate: vi.fn(),
     drawImage: vi.fn(), restore: vi.fn(), scale: vi.fn(), beginPath: vi.fn(),
     moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), stroke: vi.fn(),
-    fill: vi.fn(), fillText: vi.fn(),
+    fill: vi.fn(), fillText: vi.fn(), measureText: vi.fn(() => ({ width: 120 })),
   };
   vi.spyOn(HTMLCanvasElement.prototype, "getContext")
     .mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
@@ -74,4 +74,21 @@ it("draws ref-held frames at device pixel ratio and cancels its animation loop",
   expect(ctx.scale).toHaveBeenCalledWith(0.75, 0.75);
   unmount();
   expect(cancel).toHaveBeenCalledWith(1);
+});
+
+it("shows actionable guidance for every quality issue", () => {
+  const messages = {
+    too_dark: "Too dark - face a window or lamp",
+    too_bright: "Too bright - reduce direct light",
+    uneven_light: "Uneven lighting - light your face from the front",
+    too_far: "Move closer to the camera",
+    turned_away: "Face the camera",
+    tilted: "Level your head",
+    occluded: "Clear hair or hands away from your face",
+  };
+  render(<LiveView bitmapRef={{ current: null }} headerRef={{ current: null }}
+    header={{ ...frameFixture, quality: { ...qualityFixture, issues: Object.keys(messages) } }}
+    connection="connected" sendReset={vi.fn()} />);
+  Object.values(messages).forEach((message) => expect(screen.getByText(message)).toBeVisible());
+  expect(screen.getByText("Quality 30%")).toBeVisible();
 });

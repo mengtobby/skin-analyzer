@@ -28,7 +28,19 @@ export interface SkinMetrics {
   overall: ZoneMetrics;
   zones: Partial<Record<Zone, ZoneMetrics>>;
 }
+export interface CaptureQuality {
+  ok: boolean;
+  score: number;
+  issues: string[];
+  brightness: number;
+  evenness: number;
+  face_size_px: number;
+  yaw_deg: number;
+  pitch_deg: number;
+}
 export interface FrameHeader {
+  quality?: CaptureQuality | null;
+  analyzed?: boolean;
   type: "frame";
   frame_id: number;
   timestamp: number;

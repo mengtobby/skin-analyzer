@@ -20,12 +20,18 @@ const metrics = (v: unknown) => object(v) &&
 const member = (v: unknown, options: string[]) => text(v) && options.includes(v);
 const list = (v: unknown, check: (item: unknown) => boolean) => Array.isArray(v) && v.every(check);
 
+const quality = (v: unknown) => v === null || (object(v) &&
+  typeof v.ok === "boolean" && strings(v.issues) &&
+  ["score", "brightness", "evenness", "face_size_px", "yaw_deg", "pitch_deg"]
+    .every((key) => number(v[key])));
+
 export function isFrameHeader(v: unknown): v is FrameHeader {
   if (!object(v)) return false;
   const face = v.face;
   const perf = v.perf;
   const skin = v.metrics;
-  return v.type === "frame" && number(v.frame_id) && number(v.timestamp) &&
+  return (!("quality" in v) || quality(v.quality)) &&
+    (!("analyzed" in v) || typeof v.analyzed === "boolean") && v.type === "frame" && number(v.frame_id) && number(v.timestamp) &&
     number(v.width) && v.width > 0 && number(v.height) && v.height > 0 &&
     (face === null || (object(face) && tuple(face.bbox, 4) && list(face.zones,
       (z) => object(z) && member(z.zone, zones) && polygon(z.polygon)))) &&
