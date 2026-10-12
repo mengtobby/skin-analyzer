@@ -60,7 +60,7 @@ bytes 4+N..end    JPEG of the display frame (may be empty only if encoding faile
     }
   ],
   "counts": {"papule": 2, "hyperpigmentation": 1},   // confirmed tracks per label
-  "analyzed": true,                  // preprocessing and quality assessment ran this frame
+  "analyzed": true,                  // full analysis ran this frame AND quality passed
   "quality": null | {
     "ok": true, "score": 1.0, "issues": [],
     "brightness": 65.4, "evenness": 3.2, "face_size_px": 180.0,
@@ -89,14 +89,26 @@ bytes 4+N..end    JPEG of the display frame (may be empty only if encoding faile
 ### Analysis cadence and capture quality
 
 Analysis runs every second frame by default, starting at frame index 0. Landmarks
-and face geometry update every frame. Confirmed tracks are reprojected at their
-filtered canonical centres without advancing lifecycle on skipped or rejected
-frames. Skipped frames reuse the last quality report and smoothed metrics.
-`analyzed` is true when preprocessing and quality assessment ran, including
-rejected frames where detection did not run. Unexecuted stages have zero timing.
-Without a face, `quality` is null and `analyzed` is false. Failed quality suppresses
-detection, tracker updates and metric smoothing; `metrics` stays null until a
-passing analysis.
+and face geometry update every frame. On skipped frames, confirmed tracks are
+reprojected at their filtered canonical centres without advancing their lifecycle,
+and the last quality report and smoothed metrics are reused. Unexecuted stages
+have zero timing.
+
+`analyzed` is true only on frames where the full analysis ran and quality passed.
+It is false on skipped frames, on quality-rejected frames, and without a face
+(where `quality` is also null).
+
+Failed quality suppresses detection, tracker updates and metric smoothing, and
+`metrics` is null until a passing analysis. The freeze is bounded:
+
+- Tracks stay frozen (reprojected) for up to the tracker's face-lost timeout
+  (1.5 s by default). After that they are hidden and aged on analysis frames, so
+  they expire normally.
+- On `turned_away` frames, tracks are hidden immediately, because a 2D face frame
+  cannot place lesions correctly on a turned face.
+- Reports keep the last passing analysis while quality fails. Once the face has
+  been absent for longer than the timeout, that analysis is discarded, so a
+  returning (possibly different) person never sees earlier findings.
 
 Quality `score` is in [0, 1], rounded to two decimals. Measurements are rounded
 to one decimal. `brightness` and `evenness` use CIELAB L* units; `face_size_px`
