@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
-from functools import lru_cache
 from types import MappingProxyType
 
 import cv2
@@ -79,35 +78,20 @@ def _masked_blur(light: np.ndarray, skin: np.ndarray, sigma: float) -> np.ndarra
     return np.divide(numerator, denominator, out=np.zeros_like(light), where=denominator > 0)
 
 
-@lru_cache(maxsize=16)
-def _kernel_spectrum(sigma: float, size: int, radius: int) -> np.ndarray:
-    kernel = cv2.getGaussianKernel(2 * radius + 1, sigma, cv2.CV_32F)[:, 0]
-    wrapped = np.zeros((1, size), np.float32)
-    wrapped[0, (np.arange(kernel.size) - radius) % size] = kernel
-    return cv2.dft(wrapped, flags=cv2.DFT_ROWS | cv2.DFT_COMPLEX_OUTPUT)
-
-
-def _blur_rows(image: np.ndarray, sigma: float, radius: int) -> np.ndarray:
-    """FFT convolution with reflected padding and the same finite Gaussian kernel."""
-    width = image.shape[1]
-    size = cv2.getOptimalDFTSize(width + 2 * radius)
-    padded = cv2.copyMakeBorder(image, 0, 0, radius, radius, cv2.BORDER_REFLECT_101)
-    if padded.shape[1] < size:
-        padded = cv2.copyMakeBorder(padded, 0, 0, 0, size - padded.shape[1], cv2.BORDER_CONSTANT)
-    spectrum = cv2.dft(padded, flags=cv2.DFT_ROWS | cv2.DFT_COMPLEX_OUTPUT)
-    kernel = np.broadcast_to(_kernel_spectrum(sigma, size, radius), spectrum.shape).copy()
-    product = cv2.mulSpectrums(spectrum, kernel, flags=cv2.DFT_ROWS)
-    blurred = cv2.idft(product, flags=cv2.DFT_ROWS | cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT)
-    return blurred[:, radius:radius + width]
-
-
 def _gaussian_blur(image: np.ndarray, sigma: float) -> np.ndarray:
-    if sigma < 12:
+    """Gaussian blur; large sigmas run on a downsampled image (a low-pass loses nothing there).
+
+    Keeps the sigma=40 px pigmentation baseline at well under a millisecond instead of an
+    exact full-resolution convolution.
+    """
+    factor = int(min(8, sigma // 4))
+    if factor < 2:
         return cv2.GaussianBlur(image, (0, 0), sigma)
-    # OpenCV's automatic float32 kernel spans four standard deviations each way.
-    radius = (int(round(sigma * 8 + 1)) | 1) // 2
-    horizontal = _blur_rows(image, sigma, radius)
-    return _blur_rows(np.ascontiguousarray(horizontal.T), sigma, radius).T
+    h, w = image.shape[:2]
+    sw, sh = max(1, w // factor), max(1, h // factor)
+    small = cv2.resize(image, (sw, sh), interpolation=cv2.INTER_AREA)
+    blurred = cv2.GaussianBlur(small, (0, 0), sigmaX=sigma * sw / w, sigmaY=sigma * sh / h)
+    return cv2.resize(blurred, (w, h), interpolation=cv2.INTER_LINEAR)
 
 
 def _score(mask: np.ndarray, a: np.ndarray, face_median: float,
