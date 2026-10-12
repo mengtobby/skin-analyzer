@@ -1,0 +1,14 @@
+# Tested with Python 3.12 on Windows 11. Swap onnxruntime-directml for onnxruntime-gpu
+# on NVIDIA machines (TensorRT/CUDA providers), or plain onnxruntime elsewhere.
+numpy==2.5.4
+opencv-contrib-python==5.0.0.93
+mediapipe==1.1.0
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+onnxruntime-directml==1.24.4; sys_platform == "win32"
+onnxruntime==1.24.4; sys_platform != "win32"
+
+# dev / tests
+pytest==9.1.1
+httpx==0.28.1
