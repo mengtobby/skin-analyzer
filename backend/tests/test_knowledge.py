@@ -34,12 +34,54 @@ def test_acne_report(kb: KnowledgeBase) -> None:
     assert finding.condition == "inflammatory_acne"
     assert finding.severity in {"moderate", "notable"}
     assert finding.count == 3 and finding.zones == (FaceZone.CHIN,)
-    assert "3 papule" in finding.evidence
+    assert finding.evidence == "3 inflamed lesions tracked (3 papules) on chin"
     assert "Chin/jawline" in report.insights[0].zone_notes[0]
     assert {i.id for i in report.ingredients} & {"salicylic_acid", "benzoyl_peroxide"}
     assert any(p.category == "treatment" for p in report.products)
     assert any("alternate nights" in w for w in report.warnings)
     assert any("pregnancy" in w for w in report.warnings)
+
+
+def test_mixed_lesion_evidence(kb: KnowledgeBase) -> None:
+    tracks = [track(), replace(track(), track_id=2),
+              replace(track(DetectionClass.PUSTULE, FaceZone.LEFT_CHEEK), track_id=3)]
+    report = generate_report(tracks, None, kb)
+    assert report.findings[0].evidence == (
+        "3 inflamed lesions tracked (2 papules, 1 pustule) on chin, left cheek"
+    )
+
+
+@pytest.mark.parametrize("label,description", [
+    (DetectionClass.PAPULE, "1 inflamed lesion tracked (1 papule)"),
+    (DetectionClass.PUSTULE, "1 inflamed lesion tracked (1 pustule)"),
+    (DetectionClass.NODULE, "1 inflamed lesion tracked (1 nodule)"),
+    (DetectionClass.COMEDONE, "1 comedone tracked"),
+    (DetectionClass.RED_MARK, "1 red mark tracked"),
+    (DetectionClass.DIFFUSE_REDNESS, "1 area of diffuse redness tracked"),
+    (DetectionClass.HYPERPIGMENTATION, "1 area of hyperpigmentation tracked"),
+    (DetectionClass.TEXTURE, "1 texture irregularity tracked"),
+    (DetectionClass.FINE_LINES, "1 area with fine lines tracked"),
+])
+def test_singular_evidence(label: DetectionClass, description: str,
+                           kb: KnowledgeBase) -> None:
+    report = generate_report([track(label, FaceZone.LEFT_CHEEK)], None, kb)
+    assert report.findings[0].evidence == f"{description} on left cheek"
+
+
+def test_metric_evidence(kb: KnowledgeBase) -> None:
+    report = generate_report([], metrics(redness=61), kb)
+    assert report.findings[0].evidence == "Redness index 61/100 across the face"
+
+
+@pytest.mark.parametrize("tracks", [[], [track()]])
+def test_exact_disclaimer(tracks: list[Track], kb: KnowledgeBase) -> None:
+    report = report_to_dict(generate_report(tracks, None, kb))
+    assert report["disclaimer"] == (
+        "Cosmetic guidance only — not a medical diagnosis. Camera-based analysis is "
+        "approximate; consult a dermatologist for persistent, painful or changing lesions. "
+        "Products are examples of formulations containing the suggested ingredients, "
+        "not endorsements."
+    )
 
 
 def test_baseline_and_unconfirmed(kb: KnowledgeBase) -> None:
