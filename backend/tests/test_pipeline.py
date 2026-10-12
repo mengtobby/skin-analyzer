@@ -382,3 +382,32 @@ def test_close_skips_landmarker_while_worker_is_hung(monkeypatch, caplog):
     runner.close()
     assert calls == []
     assert "skipping landmarker close" in caplog.text
+
+
+def test_rejected_frame_preserves_report(monkeypatch):
+    from .test_scheduling import seeded_analyzer
+    from skin_analyzer.pipeline import runner as module
+
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    assert analyzer.last_good() is None
+    analyzer.analysis_every = 1
+    runner = PipelineRunner(Settings(), FakeSource(image), analyzer, KnowledgeBase.load())
+    rejected = analyzer.process(np.zeros_like(image), 0)
+    runner._publish_report(rejected)
+    assert runner.latest_report() is None
+    accepted = analyzer.process(image, .01)
+    runner._publish_report(accepted)
+    report = runner.latest_report()
+    original = module.generate_report
+    calls = []
+
+    def capture(tracks, metrics, kb, **kwargs):
+        calls.append((tracks, metrics, kwargs["face_detected"]))
+        return original(tracks, metrics, kb, **kwargs)
+
+    monkeypatch.setattr(module, "generate_report", capture)
+    rejected = analyzer.process(np.zeros_like(image), 10)
+    assert not rejected.tracks and rejected.metrics is None
+    runner._publish_report(rejected)
+    assert calls == [(accepted.tracks, accepted.metrics, True)]
+    assert runner.latest_report() == report

@@ -227,8 +227,16 @@ class PipelineRunner:
 
     def _publish_report(self, result: FrameResult) -> None:
         try:
-            report = report_to_dict(generate_report(result.tracks, result.metrics, self.kb,
-                                                    now=time.time(), face_detected=result.region is not None))
+            tracks, metrics = result.tracks, result.metrics
+            face_detected = result.region is not None
+            if result.quality is not None and not result.quality.ok:
+                accepted = self.analyzer.last_good()
+                if accepted is None:
+                    return
+                tracks, metrics = accepted
+                face_detected = True
+            report = report_to_dict(generate_report(tracks, metrics, self.kb,
+                                                    now=time.time(), face_detected=face_detected))
         except Exception as exc:
             self._set_error("report", exc)
             return

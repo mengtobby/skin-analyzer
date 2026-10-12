@@ -49,7 +49,7 @@ def test_dark_frame_freezes_tracks_and_metrics(monkeypatch):
     analyzer.landmarker.landmarks = analyzer.landmarker.landmarks + np.array([5, 3])
     dark = analyzer.process(np.zeros_like(image), 1 / 30)
     assert "too_dark" in dark.quality.issues and not dark.quality.ok
-    assert dark.metrics is None and len(calls) == 1 and dark.analyzed
+    assert dark.metrics is None and len(calls) == 1 and not dark.analyzed
     assert dark.tracks == analyzer.tracker.project(dark.region.frame, 1 / 30)
     assert dark.tracks[0].bbox != first.tracks[0].bbox
     assert analyzer.tracker._tracks == tracker_state
@@ -94,3 +94,40 @@ def test_quality_params_and_no_face():
     analyzer.landmarker.landmarks = None
     lost = analyzer.process(image, 1)
     assert lost.quality is None and not lost.analyzed
+
+
+def test_quality_freeze_timeout_and_expiry(monkeypatch):
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    first = analyzer.process(image, 0)
+    assert analyzer.last_good() == (first.tracks, first.metrics)
+    dark = np.zeros_like(image)
+    timeout = analyzer.tracker.params.face_lost_timeout_s
+    assert analyzer.process(dark, timeout).tracks
+    assert not analyzer.process(dark, timeout + .01).tracks
+    assert next(iter(analyzer.tracker._tracks.values())).misses == 1
+    assert not analyzer.process(dark, timeout + .02).tracks
+    assert next(iter(analyzer.tracker._tracks.values())).misses == 1
+    for index in range(2 * analyzer.tracker.params.max_misses + 2):
+        assert not analyzer.process(dark, timeout + .03 + index / 30).tracks
+    assert not analyzer.tracker._tracks
+    assert analyzer.last_good() == (first.tracks, first.metrics)
+    analyzer.last_good()[0].clear()
+    assert analyzer.last_good()[0] == first.tracks
+    analyzer.reset()
+    assert analyzer.last_good() is None
+
+
+def test_turned_away_hides_tracks_immediately(monkeypatch):
+    from dataclasses import replace
+    from skin_analyzer import face
+
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    first = analyzer.process(image, 0)
+    rejected = replace(first.quality, ok=False, issues=("turned_away",))
+    monkeypatch.setattr(face, "assess_quality", lambda *_: rejected)
+    analyzer.analysis_every = 1
+    result = analyzer.process(image, .01)
+    assert not result.tracks and not result.analyzed
+    assert analyzer.tracker._tracks
+    analyzer.analysis_every = 2
+    assert not analyzer.process(image, .02).tracks
