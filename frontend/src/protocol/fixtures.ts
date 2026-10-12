@@ -94,3 +94,8 @@ export function encodeFrame(
   new Uint8Array(buffer, 4 + json.length).set(jpeg);
   return buffer;
 }
+
+export const qualityFixture = {
+  ok: false, score: 0.3, issues: ["too_dark", "too_far"], brightness: 27,
+  evenness: 0.4, face_size_px: 80, yaw_deg: 0, pitch_deg: 0,
+};

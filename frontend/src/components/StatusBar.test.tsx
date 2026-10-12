@@ -39,3 +39,14 @@ it("shows a failed health request without removing status information", async ()
   expect(screen.getByRole("status")).toHaveTextContent("Health unavailable");
   expect(screen.getByText("reconnecting")).toBeVisible();
 });
+
+it("hides stale performance after disconnect", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+    ok: true, json: async () => ({ success: true, data: healthFixture }),
+  }));
+  const { rerender } = render(<StatusBar connection="connected" header={frameFixture} health={null} />);
+  await act(async () => {});
+  rerender(<StatusBar connection="reconnecting" header={frameFixture} health={null} />);
+  expect(screen.getByText("-- fps")).toBeVisible();
+  expect(screen.getByText("-- ms latency")).toBeVisible();
+});

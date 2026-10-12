@@ -1,4 +1,4 @@
-import type { FrameHeader, Label, Point } from "../protocol/types";
+import type { FrameHeader, Label, Point, Track } from "../protocol/types";
 import { humanize, percent } from "../lib/format";
 
 export const LABEL_COLORS: Record<Label, string> = {
@@ -75,13 +75,29 @@ export function drawOverlay(
       ctx.stroke();
     }
     if (toggles.boxes) brackets(ctx, track.bbox);
-    if (toggles.labels) {
-      ctx.fillText(
-        `#${track.id} ${humanize(track.label)} ${percent(track.confidence)}`,
-        track.bbox[0],
-        Math.max(12 / scale, track.bbox[1] - 5 / scale),
-      );
-    }
   }
+  if (toggles.labels) drawTags(ctx, header.tracks, scale);
+
   ctx.restore();
+}
+
+const priorities: Partial<Record<Label, number>> = {
+  nodule: 0, pustule: 1, papule: 2, comedone: 3, red_mark: 4, hyperpigmentation: 5,
+};
+type Rect = { x: number; y: number; width: number; height: number };
+function drawTags(ctx: CanvasRenderingContext2D, tracks: Track[], scale: number): void {
+  const placed: Rect[] = [];
+  const sorted = tracks.filter((track) => priorities[track.label] !== undefined)
+    .sort((a, b) => priorities[a.label]! - priorities[b.label]! || b.confidence - a.confidence);
+  for (const track of sorted) {
+    const text = `#${track.id} ${humanize(track.label)} ${percent(track.confidence)}`;
+    const x = track.bbox[0];
+    const y = Math.max(12 / scale, track.bbox[1] - 5 / scale);
+    const rect = { x, y: y - 12 / scale, width: ctx.measureText(text).width, height: 15 / scale };
+    if (placed.some((p) => rect.x < p.x + p.width && rect.x + rect.width > p.x &&
+      rect.y < p.y + p.height && rect.y + rect.height > p.y)) continue;
+    placed.push(rect);
+    ctx.fillStyle = LABEL_COLORS[track.label];
+    ctx.fillText(text, x, y);
+  }
 }
