@@ -8,29 +8,74 @@ import numpy as np
 from ..domain import ZONE_IDS, FaceZone
 
 
+_NEIGHBOUR_SHIFTS = tuple(
+    (dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dy, dx) != (0, 0)
+)
+
+
+_KERNEL_3X3 = np.ones((3, 3), np.uint8)
+_NO_LABEL = np.float32(2**24)  # above any label; float32 stays exact below 2**24
+
+
+def _multi_ring_pairs(padded: np.ndarray, pixels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """(component, pixel) pairs for ring pixels touching several components."""
+    lookup = np.pad(padded, 1)
+    width = lookup.shape[1]
+    ys, xs = np.divmod(pixels, padded.shape[1])
+    centre = (ys + 1) * width + (xs + 1)
+    flat = lookup.ravel()
+    neighbours = np.stack(
+        [np.take(flat, centre + dy * width + dx) for dy, dx in _NEIGHBOUR_SHIFTS], axis=1
+    )
+    neighbours.sort(axis=1)
+    first = np.ones(neighbours.shape, bool)  # count each component once per pixel
+    first[:, 1:] = neighbours[:, 1:] != neighbours[:, :-1]
+    rows, cols = np.nonzero(first & (neighbours > 0))
+    return neighbours[rows, cols], pixels[rows]
+
+
+def _ring_pairs(padded: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Every (component label, flat ring-pixel index) adjacency, each pair once.
+
+    Max-dilation and min-erosion of the label image give each pixel's largest and
+    smallest neighbouring label; where they agree the pixel touches exactly one
+    component (the common case) and needs no per-pixel work.
+    """
+    as_float = padded.astype(np.float32)
+    largest = cv2.dilate(as_float, _KERNEL_3X3).ravel()
+    smallest = cv2.erode(np.where(padded > 0, as_float, _NO_LABEL), _KERNEL_3X3).ravel()
+    ring = (padded.ravel() == 0) & (largest > 0)
+    single = np.flatnonzero(ring & (largest == smallest))
+    multi = np.flatnonzero(ring & (largest != smallest))
+    multi_components, multi_pixels = _multi_ring_pairs(padded, multi)
+    components = np.concatenate([largest[single].astype(np.int64), multi_components])
+    return components, np.concatenate([single, multi_pixels])
+
+
 def _enclosed_red_skin(
     accepted: np.ndarray, candidates: np.ndarray, skin: np.ndarray
 ) -> np.ndarray:
-    """Restore components with at least 60% accepted skin on their non-neutral ring."""
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(
-        candidates.astype(np.uint8), connectivity=8
-    )
-    labels = np.pad(labels, 1)
-    accepted = np.pad(accepted, 1)
-    # Preserve rejection at the canvas boundary; only actual zone-zero pixels
-    # (oval and feature exclusions) are neutral.
-    skin = np.pad(skin, 1, constant_values=True)
-    restored = np.zeros(count, bool)
-    kernel = np.ones((3, 3), np.uint8)
-    for label in range(1, count):
-        x, y, width, height, _ = stats[label]
-        region = np.s_[y:y + height + 2, x:x + width + 2]
-        component = labels[region] == label
-        ring = cv2.dilate(component.astype(np.uint8), kernel).astype(bool) & ~component
-        border = ring & skin[region]
-        total = np.count_nonzero(border)
-        restored[label] = total > 0 and np.count_nonzero(border & accepted[region]) >= 0.6 * total
-    return restored[labels[1:-1, 1:-1]]
+    """Restore components with at least 60% accepted skin on their non-neutral ring.
+
+    Fully vectorised, so the cost does not grow with the number of red components
+    (noisy or flushed skin can have thousands).
+    """
+    count, labels = cv2.connectedComponents(candidates.astype(np.uint8), connectivity=8)
+    if count <= 1:
+        return np.zeros(candidates.shape, bool)
+    # Pad by one: outside the canvas counts as rejected skin (never neutral, never
+    # accepted); only actual zone-zero pixels (oval and feature exclusions) are neutral.
+    padded = np.pad(labels, 1)
+    skin_p = np.pad(skin, 1, constant_values=True)
+    accepted_p = np.pad(accepted, 1, constant_values=False)
+    component, pixel = _ring_pairs(padded)
+    in_skin = np.take(skin_p.ravel(), pixel)
+    good = in_skin & np.take(accepted_p.ravel(), pixel)
+    total = np.bincount(component, weights=in_skin, minlength=count)
+    accepted_count = np.bincount(component, weights=good, minlength=count)
+    restored = (total > 0) & (accepted_count >= 0.6 * total)
+    restored[0] = False
+    return restored[labels]
 
 
 def refine_zone_map(
