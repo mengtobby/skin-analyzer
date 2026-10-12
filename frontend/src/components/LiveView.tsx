@@ -3,6 +3,8 @@ import type { FrameHeader } from "../protocol/types";
 import { drawOverlay, type OverlayToggles } from "../overlay/draw";
 import type { Connection } from "../stream/useSkinStream";
 
+import { QualityBanner } from "./QualityBanner";
+
 interface LiveViewProps {
   bitmapRef: MutableRefObject<ImageBitmap | null>;
   headerRef: MutableRefObject<FrameHeader | null>;
@@ -58,7 +60,8 @@ export function LiveView({ bitmapRef, headerRef, header, connection, sendReset }
       </div>
       <div className="canvas-wrap">
         <canvas ref={canvasRef} aria-label="Live camera with skin detection overlays" />
-        {(!header || !header.face || connection !== "connected") && (
+        {header?.quality && !header.quality.ok && connection === "connected" && <QualityBanner quality={header.quality} />}
+        {(!header || (!header.face && header.quality?.ok !== false) || connection !== "connected") && (
           <p className="empty-camera" role="status">
             {!header || connection !== "connected"
               ? "Connecting to camera…"

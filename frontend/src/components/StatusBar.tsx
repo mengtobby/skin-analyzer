@@ -47,8 +47,8 @@ export function StatusBar({ connection, header, health }: StatusBarProps) {
   return (
     <div className="status-bar" aria-label="Pipeline status">
       <span className={`connection ${connection}`}>{connection}</span>
-      <span className="mono">{value(header?.perf.fps)} fps</span>
-      <span className="mono">{value(header?.perf.latency_ms)} ms latency</span>
+      <span className="mono">{value(connection === "connected" ? header?.perf.fps : undefined)} fps</span>
+      <span className="mono">{value(connection === "connected" ? header?.perf.latency_ms : undefined)} ms latency</span>
       {current && (
         <>
           <span className="chip">Detector: {current.detector}</span>

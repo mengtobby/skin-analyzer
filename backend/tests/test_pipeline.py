@@ -66,7 +66,7 @@ def test_synthetic_analysis_and_face_loss() -> None:
     for index in range(8):
         result = analyzer.process(image, 100 + index / 30)
     assert result.metrics is not None
-    assert set(result.stages_ms) == {"landmarks", "preprocess", "detect", "track", "metrics"}
+    assert set(result.stages_ms) == {"landmarks", "preprocess", "quality", "detect", "track", "metrics"}
     assert any(t.confirmed and t.label in {DetectionClass.PAPULE, DetectionClass.PUSTULE}
                and t.zone in {FaceZone.LEFT_CHEEK, FaceZone.RIGHT_CHEEK} for t in result.tracks)
     analyzer.landmarker.landmarks = None

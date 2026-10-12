@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { MetricsPanel } from "./MetricsPanel";
-import { frameFixture } from "../protocol/fixtures";
+import { frameFixture, qualityFixture } from "../protocol/fixtures";
 
 afterEach(cleanup);
 
@@ -21,4 +21,11 @@ it("shows explicit unavailable metrics before frames arrive", () => {
   render(<MetricsPanel />);
   expect(screen.getAllByText("--")).toHaveLength(4);
   expect(screen.getByText(/Zone scores appear/)).toBeVisible();
+});
+
+it("pauses and dims the last accepted metrics when quality fails", () => {
+  const { rerender } = render(<MetricsPanel header={frameFixture} />);
+  rerender(<MetricsPanel header={{ ...frameFixture, metrics: null, quality: qualityFixture }} />);
+  expect(screen.getByText("Paused - improve capture conditions")).toBeVisible();
+  expect(screen.getByText("41.2").closest(".paused-metrics")).not.toBeNull();
 });

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 import cv2
 import numpy as np
@@ -53,10 +54,24 @@ def _hull_mask(shape: tuple[int, int], pts: np.ndarray, grow_px: float) -> np.nd
     cv2.fillConvexPoly(mask, hull, 1)
     r = int(round(grow_px))
     if r > 0:
-        mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1,) * 2))
+        cv2.polylines(mask, [hull], True, 1, thickness=2 * r + 1, lineType=cv2.LINE_8)
     elif r < 0:
-        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (-2 * r + 1,) * 2))
+        # The filled boundary already occupies one pixel; omit it from the inset.
+        cv2.polylines(mask, [hull], True, 0, thickness=max(1, -2 * r - 2), lineType=cv2.LINE_8)
     return mask.astype(bool)
+
+
+
+@lru_cache(maxsize=16)
+def _canonical_grids(canvas: CanvasSpec) -> tuple[np.ndarray, np.ndarray]:
+    """Reuse immutable pixel-centre coordinates for each analysis canvas."""
+    w, h = canvas.size
+    us = (np.arange(w) + 0.5) / canvas.px_per_unit + canvas.u_range[0]
+    vs = (np.arange(h) + 0.5) / canvas.px_per_unit + canvas.v_range[0]
+    u, v = np.meshgrid(us, vs)
+    u.setflags(write=False)
+    v.setflags(write=False)
+    return u, v
 
 
 def build_zone_map(
@@ -79,9 +94,7 @@ def build_zone_map(
     ):
         skin &= ~_hull_mask((h, w), sel(idx), margin * ppu)
 
-    us = (np.arange(w) + 0.5) / ppu + canvas.u_range[0]
-    vs = (np.arange(h) + 0.5) / ppu + canvas.v_range[0]
-    u, v = np.meshgrid(us, vs)
+    u, v = _canonical_grids(canvas)
 
     brow_top = min(vsel(spec.LEFT_EYEBROW).min(), vsel(spec.RIGHT_EYEBROW).min())
     eye_bottom = max(vsel(spec.LEFT_EYE).max(), vsel(spec.RIGHT_EYE).max())
@@ -110,8 +123,9 @@ def build_zone_map(
         (nose, FaceZone.NOSE),
         (forehead, FaceZone.FOREHEAD),
     ):
-        zone = np.where(mask, ZONE_IDS[z], zone).astype(np.uint8)
-    return np.where(skin, zone, 0).astype(np.uint8)
+        zone[mask] = ZONE_IDS[z]
+    zone[~skin] = 0
+    return zone
 
 
 def zone_polygons(
