@@ -50,6 +50,24 @@ def test_achromatic_balanced_skin_is_not_fragmented_by_chroma_noise():
     assert refined[3:].all() and not refined[:3].any()
 
 
+def test_red_lesion_touching_eye_exclusion_is_kept():
+    zones = np.full((40, 40), ZONE_IDS[FaceZone.LEFT_CHEEK], np.uint8)
+    zones[10:20, 10:20] = 0  # eye exclusion
+    lab = np.full((40, 40, 3), (65, 15, 18), np.float32)
+    lab[12:18, 20:24] = (55, 42, 23)
+    refined = refine_zone_map(zones, lab)
+    assert refined[12:18, 20:24].all()
+    assert not refined[10:20, 10:20].any()
+
+
+def test_red_blob_inside_dark_hair_band_is_rejected():
+    zones = np.full((40, 40), ZONE_IDS[FaceZone.LEFT_CHEEK], np.uint8)
+    lab = np.full((40, 40, 3), (65, 15, 18), np.float32)
+    lab[10:20] = (12, 1, 2)
+    lab[12:18, 15:20] = (55, 42, 23)
+    assert not refine_zone_map(zones, lab)[10:20].any()
+
+
 def test_fallback_reference_and_empty_map():
     zones = np.full((10, 10), ZONE_IDS[FaceZone.FOREHEAD], np.uint8)
     lab = np.full((10, 10, 3), (65, 15, 18), np.float32)

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skin_analyzer.preprocessing import create_preprocessor
-from skin_analyzer.preprocessing.cpu import CpuPreprocessor, estimate_wb_gains
+from skin_analyzer.preprocessing.cpu import CpuPreprocessor, estimate_wb_gains, suppress_specular
 
 
 def _tinted_scene(tint=(0.8, 1.0, 1.25), seed=0):
@@ -135,6 +135,19 @@ def test_empty_roi_reports_no_glare():
     )
     assert not result.specular_mask.any()
     np.testing.assert_array_equal(result.bgr, image)
+
+
+def test_suppress_specular_with_glare_outside_roi_returns_input():
+    image = np.full((40, 40, 3), (120, 140, 190), np.uint8)
+    image[2:5, 2:5] = 252
+    mask = np.zeros((40, 40), bool)
+    mask[2:5, 2:5] = True
+    roi = np.zeros((40, 40), bool)
+    roi[10:30, 10:30] = True
+    before = image.copy()
+    result = suppress_specular(image, mask, roi)
+    assert result is image
+    np.testing.assert_array_equal(image, before)
 
 
 @pytest.mark.parametrize("seed", [0, 3, 9])

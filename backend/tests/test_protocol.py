@@ -38,9 +38,15 @@ def test_quality_header_rounding_and_rejected_analysis() -> None:
                             12.345, 4.567, 180.123, -2.345, 1.234, .5)
     result = FrameResult(None, [], None, {"quality": 1.0}, quality)
     header = build_frame_header(result, 0, 0, 20, 20)
-    assert header["analyzed"] is True
+    assert header["analyzed"] is False
     assert header["quality"] == {
         "ok": False, "score": .12, "issues": ["too_dark", "occluded"],
         "brightness": 12.3, "evenness": 4.6, "face_size_px": 180.1,
         "yaw_deg": -2.3, "pitch_deg": 1.2}
     assert decode_frame_message(encode_frame_message(header, b""))[0] == header
+
+
+@pytest.mark.parametrize("analyzed,timing", [(True, 0.0), (False, 5.0)])
+def test_explicit_analyzed_flag(analyzed, timing):
+    result = FrameResult(None, [], None, {"quality": timing}, analyzed=analyzed)
+    assert build_frame_header(result, 0, 0, 20, 20)["analyzed"] is analyzed

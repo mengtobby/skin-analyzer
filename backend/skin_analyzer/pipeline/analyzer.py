@@ -23,10 +23,7 @@ class FrameResult:
     stages_ms: dict[str, float]
     quality: face.QualityReport | None = None
 
-    @property
-    def analyzed(self) -> bool:
-        """Whether this frame ran preprocessing and capture assessment."""
-        return self.stages_ms.get("quality", 0.0) > 0
+    analyzed: bool = False
 
 
 class FrameAnalyzer:
@@ -45,6 +42,8 @@ class FrameAnalyzer:
         self._frame_index = 0
         self._quality: face.QualityReport | None = None
         self._metrics: SkinMetrics | None = None
+        self._last_ok_timestamp: float | None = None
+        self._last_good: tuple[list[Track], SkinMetrics | None] | None = None
 
     def reset(self) -> None:
         self.tracker.reset()
@@ -54,6 +53,15 @@ class FrameAnalyzer:
         self._frame_index = 0
         self._quality = None
         self._metrics = None
+        self._last_ok_timestamp = None
+        self._last_good = None
+
+    def last_good(self) -> tuple[list[Track], SkinMetrics | None] | None:
+        """Return the latest accepted analysis with an independent track list."""
+        if self._last_good is None:
+            return None
+        tracks, metrics = self._last_good
+        return list(tracks), metrics
 
     def process(self, frame_bgr: np.ndarray, timestamp: float) -> FrameResult:
         if (frame_bgr.dtype != np.uint8 or frame_bgr.ndim != 3
@@ -89,10 +97,17 @@ class FrameAnalyzer:
     def _project(self, region: FaceRegion, timestamp: float,
                  stages: dict[str, float]) -> FrameResult:
         start = perf_counter()
-        tracks = self.tracker.project(region.frame, timestamp)
+        rejected = self._quality is not None and not self._quality.ok
+        hidden = rejected and (self._freeze_expired(timestamp) or
+                               "turned_away" in self._quality.issues)
+        tracks = [] if hidden else self.tracker.project(region.frame, timestamp)
         stages["track"] = (perf_counter() - start) * 1000
         metrics = self._metrics if self._quality is not None and self._quality.ok else None
         return FrameResult(region, tracks, metrics, stages, self._quality)
+
+    def _freeze_expired(self, timestamp: float) -> bool:
+        return (self._last_ok_timestamp is None or
+                timestamp - self._last_ok_timestamp > self.tracker.params.face_lost_timeout_s)
 
     def _analyze(self, frame_bgr: np.ndarray, region: FaceRegion, timestamp: float,
                  stages: dict[str, float]) -> FrameResult:
@@ -109,6 +124,8 @@ class FrameAnalyzer:
         self._quality = face.assess_quality(region, pre.lab, zones, self.quality_params)
         stages["quality"] = (perf_counter() - start) * 1000
         if not self._quality.ok:
+            if self._freeze_expired(timestamp):
+                self.tracker.update([], region.frame, timestamp)
             return self._project(region, timestamp, stages)
         start = perf_counter()
         dets = self.detector.detect(DetectorInput(frame_bgr, region, pre.bgr, pre.lab,
@@ -122,4 +139,6 @@ class FrameAnalyzer:
                                                        self.canvas.px_per_unit))
         stages["metrics"] = (perf_counter() - start) * 1000
         self._metrics = metrics
-        return FrameResult(region, tracks, metrics, stages, self._quality)
+        self._last_ok_timestamp = timestamp
+        self._last_good = (list(tracks), metrics)
+        return FrameResult(region, tracks, metrics, stages, self._quality, analyzed=True)
