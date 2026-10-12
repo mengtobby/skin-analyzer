@@ -1,8 +1,12 @@
 import time
+from contextlib import ExitStack, contextmanager
+from threading import Lock
 
 import cv2
 import numpy as np
+import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from skin_analyzer.api.app import create_app
 from skin_analyzer.config import Settings
@@ -14,58 +18,302 @@ class FakeRunner:
     def __init__(self) -> None:
         self.resets = 0
         self.started = self.stopped = False
+        self.listeners = []
+        self.lock = Lock()
+        self.report = None
+        self.version = 1
         _, jpeg = cv2.imencode(".jpg", np.zeros((10, 10, 3), np.uint8))
         self.packet = encode_frame_message(build_frame_header(
-            FrameResult(None, [], None, {}), 1, time.time(), 10, 10), jpeg.tobytes())
+            FrameResult(None, [], None, {}), 1, 1.0, 10, 10), jpeg.tobytes())
+
+    @property
+    def is_running(self) -> bool:
+        return self.started and not self.stopped
+
+    def add_listener(self, callback):
+        with self.lock:
+            self.listeners.append(callback)
+
+        def unsubscribe():
+            with self.lock:
+                self.listeners.remove(callback)
+        return unsubscribe
+
+    def notify(self) -> None:
+        with self.lock:
+            callbacks = tuple(self.listeners)
+        for callback in callbacks:
+            callback()
 
     def start(self) -> None:
         self.started = True
 
     def stop(self) -> None:
         self.stopped = True
+        self.notify()
 
     def health(self) -> dict:
         return {"status": "ok"}
 
-    def latest_report(self) -> None:
-        return None
+    def latest_report(self) -> tuple[int, dict] | None:
+        return self.report
 
-    def wait_packet(self, after_version: int, timeout: float) -> tuple[int, bytes] | None:
-        if after_version == 0:
-            return 1, self.packet
-        time.sleep(0.01)
-        return None
+    def latest_packet(self) -> tuple[int, bytes]:
+        return self.version, self.packet
 
     def reset(self) -> None:
         self.resets += 1
 
 
+def wait_for(condition) -> None:
+    deadline = time.monotonic() + 3
+    while not condition():
+        assert time.monotonic() < deadline, "condition did not become true"
+        time.sleep(0.001)
+
+
+@contextmanager
+def stream(client, headers=None):
+    before = client.app.state.active_streams
+    with client.websocket_connect("/ws/stream", headers=headers or {}) as socket:
+        try:
+            yield socket
+        finally:
+            socket.close()
+            wait_for(lambda: client.app.state.active_streams <= before)
+
+
+def ready(socket) -> bytes:
+    assert socket.receive_json()["type"] == "status"
+    return socket.receive_bytes()
+
+
 def test_api_and_websocket() -> None:
     runner = FakeRunner()
-    with TestClient(create_app(Settings(), runner)) as client:
+    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
         assert runner.started
         assert client.get("/api/health").json() == {
             "success": True, "data": {"status": "ok"}, "error": None}
         assert client.get("/api/report").json() == {"success": True, "data": None, "error": None}
         assert client.post("/api/reset").json()["data"] == {"reset": True}
-        with client.websocket_connect("/ws/stream") as socket:
-            assert socket.receive_json()["type"] == "status"
-            header, jpeg = decode_frame_message(socket.receive_bytes())
+        with stream(client) as socket:
+            header, jpeg = decode_frame_message(ready(socket))
             assert header["type"] == "frame" and jpeg.startswith(b"\xff\xd8")
             socket.send_text("not json")
             socket.send_json({"type": "reset"})
-            deadline = time.monotonic() + 2
-            while runner.resets < 2 and time.monotonic() < deadline:
-                time.sleep(0.01)
-            assert runner.resets == 2
+            wait_for(lambda: runner.resets == 2)
+        assert not runner.listeners
     assert runner.stopped
 
 
 def test_multiple_websocket_clients() -> None:
+    with TestClient(create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
+        with stream(client) as first:
+            with stream(client) as second:
+                assert ready(first) == ready(second)
+        assert client.app.state.active_streams == 0
+
+
+@pytest.mark.parametrize("origin", ["http://localhost:5173", "http://127.0.0.1:5173",
+                                    "http://localhost:8123", "http://127.0.0.1:8123",
+                                    "https://trusted.example"])
+def test_allowed_origins(origin) -> None:
+    settings = Settings(port=8123, extra_origins=("https://trusted.example",))
+    with TestClient(create_app(settings, FakeRunner())) as client:
+        with stream(client, {"origin": origin}) as socket:
+            ready(socket)
+        assert client.post("/api/reset", headers={"origin": origin}).status_code == 200
+
+
+@pytest.mark.parametrize("headers,host", [({"origin": "http://evil.example"}, "127.0.0.1"),
+                                         ({}, "192.0.2.1"), ({}, "testclient")])
+def test_untrusted_websocket(headers, host) -> None:
+    with TestClient(create_app(Settings(), FakeRunner()), client=(host, 50000)) as client:
+        with pytest.raises(WebSocketDisconnect) as exc:
+            with client.websocket_connect("/ws/stream", headers=headers):
+                pytest.fail("untrusted connection accepted")
+        assert exc.value.code == 1008
+        assert client.app.state.active_streams == 0
+
+
+def test_foreign_reset_origin() -> None:
     runner = FakeRunner()
     with TestClient(create_app(Settings(), runner)) as client:
-        with client.websocket_connect("/ws/stream") as first:
-            with client.websocket_connect("/ws/stream") as second:
-                assert first.receive_json()["type"] == "status"
-                assert second.receive_json()["type"] == "status"
-                assert first.receive_bytes() == second.receive_bytes()
+        response = client.post("/api/reset", headers={"origin": "http://evil.example"})
+        assert response.status_code == 403
+        assert response.json()["success"] is False
+        assert runner.resets == 0
+
+
+def test_report_delivery_and_new_frames() -> None:
+    runner = FakeRunner()
+    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+        with stream(client) as socket:
+            ready(socket)
+            runner.report = (1, {"summary": "first"})
+            runner.notify()
+            assert socket.receive_json() == {"type": "report", "data": runner.report[1]}
+            runner.report = (2, {"summary": "second"})
+            runner.version = 2
+            runner.notify()
+            assert socket.receive_bytes() == runner.packet
+            assert socket.receive_json()["data"] == runner.report[1]
+
+
+@pytest.mark.parametrize("kind", ["binary", "array", "invalid", "unsupported", "oversized", "unicode"])
+def test_invalid_messages(kind) -> None:
+    with TestClient(create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
+        with stream(client) as socket:
+            ready(socket)
+            if kind in {"oversized", "unicode"}:
+                socket.send_text("x" * 1025 if kind == "oversized" else "é" * 513)
+                code = 1009
+            else:
+                for _ in range(20):
+                    if kind == "binary":
+                        socket.send_bytes(b"reset")
+                    else:
+                        socket.send_text({"array": "[]", "invalid": "!", "unsupported": '{}'}[kind])
+                code = 1003
+            with pytest.raises(WebSocketDisconnect) as exc:
+                socket.receive_text()
+            assert exc.value.code == code
+
+
+def test_client_limit() -> None:
+    with TestClient(create_app(Settings(), FakeRunner()), client=("127.0.0.1", 50000)) as client:
+        with ExitStack() as stack:
+            for _ in range(8):
+                ready(stack.enter_context(stream(client)))
+            assert client.app.state.active_streams == 8
+            with pytest.raises(WebSocketDisconnect) as exc:
+                with client.websocket_connect("/ws/stream"):
+                    pytest.fail("ninth client accepted")
+            assert exc.value.code == 1013
+        assert client.app.state.active_streams == 0
+
+
+def test_runner_stop() -> None:
+    runner = FakeRunner()
+    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+        with stream(client) as socket:
+            ready(socket)
+            runner.stop()
+            with pytest.raises(WebSocketDisconnect) as exc:
+                socket.receive_bytes()
+            assert exc.value.code == 1001
+
+
+@pytest.mark.parametrize("endpoint", ["/api/health", "/api/report", "/api/reset"])
+def test_rest_errors_are_generic(endpoint, monkeypatch) -> None:
+    runner = FakeRunner()
+
+    def fail():
+        raise RuntimeError("secret internal path")
+
+    method = {"/api/health": "health", "/api/report": "latest_report", "/api/reset": "reset"}[endpoint]
+    monkeypatch.setattr(runner, method, fail)
+    with TestClient(create_app(Settings(), runner)) as client:
+        response = client.post(endpoint) if endpoint.endswith("reset") else client.get(endpoint)
+        assert response.json()["success"] is False
+        assert "secret" not in response.text
+
+
+def test_health_error_is_generic(monkeypatch) -> None:
+    runner = FakeRunner()
+    monkeypatch.setattr(runner, "health", lambda: {"status": "degraded", "error": "secret path"})
+    with TestClient(create_app(Settings(), runner)) as client:
+        assert client.get("/api/health").json()["data"]["error"] == "Pipeline unavailable"
+
+
+@pytest.mark.parametrize("name,value", [("PORT", "bad"), ("PORT", "0"), ("WIDTH", "0"),
+                                        ("HEIGHT", "bad"), ("FPS", "-1"),
+                                        ("JPEG_QUALITY", "101"), ("REPORT_INTERVAL_S", "nan")])
+def test_invalid_environment(name, value, monkeypatch) -> None:
+    monkeypatch.setenv(f"SKIN_{name}", value)
+    with pytest.raises(ValueError, match=f"SKIN_{name}"):
+        Settings.from_env()
+
+
+def test_environment_settings(monkeypatch) -> None:
+    values = {"WIDTH": "640", "HEIGHT": "480", "FPS": "24", "JPEG_QUALITY": "90",
+              "REPORT_INTERVAL_S": "2.5", "EXTRA_ORIGINS": "https://one.example, https://two.example"}
+    for name, value in values.items():
+        monkeypatch.setenv(f"SKIN_{name}", value)
+    settings = Settings.from_env()
+    assert (settings.width, settings.height, settings.fps, settings.jpeg_quality) == (640, 480, 24, 90)
+    assert settings.report_interval_s == 2.5
+    assert settings.extra_origins == ("https://one.example", "https://two.example")
+
+
+def test_real_runner_websocket(monkeypatch) -> None:
+    from skin_analyzer.knowledge import KnowledgeBase
+    from skin_analyzer.pipeline import PipelineRunner
+    from .test_pipeline import QueuedSource, make_analyzer
+
+    analyzer, image = make_analyzer()
+    monkeypatch.setattr(analyzer, "process", lambda *_: FrameResult(None, [], None, {}))
+    source = QueuedSource(image)
+    runner = PipelineRunner(Settings(), source, analyzer, KnowledgeBase.load())
+    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+        with stream(client) as socket:
+            assert socket.receive_json()["type"] == "status"
+            source.frames.put((image, time.time(), 1))
+            header, jpeg = decode_frame_message(socket.receive_bytes())
+            assert header["frame_id"] == 1 and jpeg.startswith(b"\xff\xd8")
+            assert socket.receive_json()["type"] == "report"
+            runner.stop()
+            with pytest.raises(WebSocketDisconnect) as exc:
+                socket.receive_bytes()
+            assert exc.value.code == 1001
+
+
+def test_disconnect_with_pending_frame() -> None:
+    runner = FakeRunner()
+    with TestClient(create_app(Settings(), runner), client=("127.0.0.1", 50000)) as client:
+        with stream(client) as socket:
+            ready(socket)
+            runner.version = 2
+            runner.notify()
+        assert not runner.listeners
+
+
+def test_cli_configuration(monkeypatch, caplog) -> None:
+    from skin_analyzer import __main__ as entry
+
+    monkeypatch.setattr("sys.argv", ["skin-analyzer", "--width", "640", "--height", "480",
+                                    "--fps", "24", "--jpeg-quality", "90",
+                                    "--report-interval-s", "2.5", "--extra-origins",
+                                    "https://trusted.example", "--host", "0.0.0.0"])
+    monkeypatch.setattr(entry, "ensure_models", lambda *_: None)
+    captured = []
+    monkeypatch.setattr(entry, "create_app", lambda settings: captured.append(settings))
+    monkeypatch.setattr(entry.uvicorn, "run", lambda *args, **kwargs: None)
+    entry.main()
+    settings = captured[0]
+    assert (settings.width, settings.height, settings.fps, settings.jpeg_quality) == (640, 480, 24, 90)
+    assert settings.report_interval_s == 2.5
+    assert settings.extra_origins == ("https://trusted.example",)
+    assert "CAMERA EXPOSED" in caplog.text
+
+
+def test_browser_readiness_bypasses_proxies(monkeypatch) -> None:
+    from skin_analyzer import __main__ as entry
+    from contextlib import nullcontext
+
+    handlers = []
+
+    class Opener:
+        def open(self, url, timeout):
+            assert url == "http://localhost:8000/api/health" and timeout == 1
+            return nullcontext()
+
+    def build_opener(handler):
+        handlers.append(handler)
+        return Opener()
+
+    monkeypatch.setattr(entry.urllib.request, "build_opener", build_opener)
+    monkeypatch.setattr(entry.shutil, "which", lambda *_: "msedge")
+    monkeypatch.setattr(entry.subprocess, "Popen", lambda *args, **kwargs: None)
+    entry._open_browser("http://localhost:8000")
+    assert handlers[0].proxies == {}

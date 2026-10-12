@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -12,13 +13,24 @@ from .config import BACKEND
 logger = logging.getLogger(__name__)
 MODEL_URL = ("https://storage.googleapis.com/mediapipe-models/face_landmarker/"
              "face_landmarker/float16/1/face_landmarker.task")
+EXPECTED_SHA256 = "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
+MAX_MODEL_BYTES = 20 * 1024 * 1024
+
+
+def _valid_model(path: Path) -> bool:
+    if path.stat().st_size > MAX_MODEL_BYTES:
+        return False
+    with path.open("rb") as model:
+        return hashlib.file_digest(model, "sha256").hexdigest() == EXPECTED_SHA256
 
 
 def ensure_models(models_dir: Path) -> Path:
     models_dir = Path(models_dir)
     target = models_dir / "face_landmarker.task"
-    if target.is_file() and target.stat().st_size > 0:
-        return target
+    if target.is_file():
+        if _valid_model(target):
+            return target
+        logger.warning("Existing face landmarker model failed SHA-256 verification: %s", target)
     temporary: Path | None = None
     try:
         models_dir.mkdir(parents=True, exist_ok=True)
@@ -26,9 +38,13 @@ def ensure_models(models_dir: Path) -> Path:
             temporary = Path(output.name)
             with urllib.request.urlopen(MODEL_URL, timeout=60) as response:
                 while chunk := response.read(1024 * 1024):
+                    if output.tell() + len(chunk) > MAX_MODEL_BYTES:
+                        raise RuntimeError("Downloaded model exceeds 20 MB size limit")
                     output.write(chunk)
             if output.tell() == 0:
                 raise RuntimeError("Downloaded model is empty")
+        if not _valid_model(temporary):
+            raise RuntimeError("Downloaded model SHA-256 mismatch")
         os.replace(temporary, target)
     except Exception as exc:
         raise RuntimeError(f"Unable to download face landmarker model to {target}: {exc}") from exc

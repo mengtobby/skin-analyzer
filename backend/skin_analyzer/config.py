@@ -24,6 +24,7 @@ class Settings:
     report_interval_s: float = 1.0
     host: str = "127.0.0.1"
     port: int = 8000
+    extra_origins: tuple[str, ...] = ()
     static_dir: Path = BACKEND.parent / "frontend/dist"
 
     def __post_init__(self) -> None:
@@ -46,11 +47,23 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> Settings:
-        values = {key: os.environ[env] for key, env in (
-            ("source", "SKIN_SOURCE"), ("host", "SKIN_HOST"),
-            ("detector", "SKIN_DETECTOR"), ("preprocess", "SKIN_PREPROCESS")) if env in os.environ}
-        if "SKIN_PORT" in os.environ:
-            values["port"] = int(os.environ["SKIN_PORT"])
+        values = {}
+        converters = {
+            "source": str, "host": str, "detector": str, "preprocess": str,
+            "port": int, "width": int, "height": int, "fps": int,
+            "jpeg_quality": int, "report_interval_s": float,
+            "extra_origins": lambda raw: tuple(x.strip() for x in raw.split(",") if x.strip()),
+        }
+        for key, convert in converters.items():
+            variable = f"SKIN_{key.upper()}"
+            if variable not in os.environ:
+                continue
+            try:
+                value = convert(os.environ[variable])
+                cls(**{key: value})
+            except (ValueError, TypeError) as exc:
+                raise ValueError(f"invalid {variable}: {exc}") from exc
+            values[key] = value
         if "SKIN_MIRROR" in os.environ:
             raw = os.environ["SKIN_MIRROR"].lower()
             if raw not in {"true", "false", "1", "0", "yes", "no"}:

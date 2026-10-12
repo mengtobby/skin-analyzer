@@ -22,9 +22,42 @@ RULES = {
     "excess_sebum": ((), "oiliness", 40),
 }
 DISCLAIMER = (
-    "Cosmetic guidance only - not a medical diagnosis. Camera-based analysis is "
-    "approximate; consult a dermatologist for persistent, painful or changing lesions."
+    "Cosmetic guidance only — not a medical diagnosis. Camera-based analysis is "
+    "approximate; consult a dermatologist for persistent, painful or changing lesions. "
+    "Products are examples of formulations containing the suggested ingredients, "
+    "not endorsements."
 )
+
+
+def _evidence(condition: str, counts: Counter[str], zones: tuple[FaceZone, ...],
+              field: str | None, value: float) -> str:
+    names = {
+        "papule": ("papule", "papules"),
+        "pustule": ("pustule", "pustules"),
+        "nodule": ("nodule", "nodules"),
+        "comedone": ("comedone", "comedones"),
+        "red_mark": ("red mark", "red marks"),
+        "diffuse_redness": ("area of diffuse redness", "areas of diffuse redness"),
+        "hyperpigmentation": ("area of hyperpigmentation", "areas of hyperpigmentation"),
+        "texture_irregularity": ("texture irregularity", "texture irregularities"),
+        "fine_lines": ("area with fine lines", "areas with fine lines"),
+    }
+    evidence: list[str] = []
+    count = sum(counts.values())
+    if count:
+        details = ", ".join(f"{n} {names[label][n != 1]}"
+                            for label, n in sorted(counts.items()))
+        if condition == "inflammatory_acne":
+            noun = "lesion" if count == 1 else "lesions"
+            text = f"{count} inflamed {noun} tracked ({details})"
+        else:
+            text = f"{details} tracked"
+        location = ", ".join(sorted(z.value.replace('_', ' ') for z in zones))
+        evidence.append(f"{text} on {location}" if location else text)
+    if field and value > 0:
+        scope = "in the T-zone (maximum)" if condition == "excess_sebum" else "across the face"
+        evidence.append(f"{field.capitalize()} index {value:g}/100 {scope}")
+    return "; ".join(evidence)
 
 
 def _validate(tracks: Sequence[Track], metrics: SkinMetrics | None) -> None:
@@ -77,12 +110,7 @@ def _finding(condition: str, tracks: Sequence[Track], metrics: SkinMetrics | Non
     lesion_score = (1 - exp(-count / 3)) * (0.5 + 0.5 * confidence)
     score = 1 - (1 - lesion_score) * (1 - 0.6 * value / 100)
     severity = "mild" if score < 0.35 else "moderate" if score < 0.65 else "notable"
-    evidence = [f"{n} {label.replace('_', ' ')}" for label, n in sorted(counts.items())]
-    if field and (metric_trigger or value > 0):
-        scope = "T-zone maximum" if condition == "excess_sebum" else "overall"
-        evidence.append(f"{scope} {field}: {value:.1f}/100 (camera estimate)")
-    location = ", ".join(z.value.replace('_', ' ') for z in ordered)
-    text = "; ".join(evidence) + (f"; observed on {location}" if location else "")
+    text = _evidence(condition, counts, ordered, field, value)
     return Finding(condition, kb.conditions[condition].title, severity, score,
                    count, ordered, text)
 
