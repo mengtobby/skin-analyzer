@@ -143,3 +143,32 @@ def test_invalid_boundaries_do_not_change_tracks() -> None:
     with pytest.raises(ValueError):
         tracker.update([], invalid, 1)
     assert tracker.update([detection(frame())], frame(), .1)[0].hits == 2
+
+
+def test_project_preserves_lifecycle_and_filtered_position() -> None:
+    tracker = LesionTracker(TrackerParams(min_hits=1))
+    tracker.update([detection(frame())], frame(), 0)
+    original = tracker.update([detection(frame(), (.22, .5))], frame(), .1)[0]
+    states = dict(tracker._tracks)
+    last_face, lost_since = tracker._last_face, tracker._lost_since
+    projected = tracker.project(frame(10), 100)[0]
+    assert tracker._tracks == states
+    assert (tracker._last_face, tracker._lost_since) == (last_face, lost_since)
+    assert (projected.hits, projected.misses, projected.age, projected.confirmed) == (
+        original.hits, original.misses, original.age, original.confirmed)
+    assert projected.canonical_center == original.canonical_center
+    points = frame(10).to_canonical(np.asarray(projected.contour))
+    assert np.allclose((points.min(axis=0) + points.max(axis=0)) / 2,
+                       original.canonical_center)
+    assert projected.bbox != original.bbox
+    with pytest.raises(ValueError):
+        tracker.project(frame(), float("nan"))
+    with pytest.raises(ValueError):
+        tracker.project(FaceFrame(frame().origin, frame().axis_u, frame().axis_v, 0), 1)
+    assert tracker._tracks == states
+
+
+def test_project_omits_tentative_tracks() -> None:
+    tracker = LesionTracker()
+    tracker.update([detection(frame())], frame(), 0)
+    assert tracker.project(frame(1), 1) == []

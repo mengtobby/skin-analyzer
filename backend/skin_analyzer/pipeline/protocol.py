@@ -39,9 +39,17 @@ def build_frame_header(result: FrameResult, frame_id: int, timestamp: float,
             return {k: round(float(v), 1) for k, v in asdict(value).items()}
         metrics = {"overall": scores(result.metrics.overall), "zones": {
             zone.value: scores(value) for zone, value in result.metrics.zones.items()}}
+    quality = None
+    if result.quality is not None:
+        report = result.quality
+        quality = {"ok": report.ok, "score": round(float(report.score), 2),
+                   "issues": list(report.issues), **{
+                       key: round(float(getattr(report, key)), 1) for key in
+                       ("brightness", "evenness", "face_size_px", "yaw_deg", "pitch_deg")}}
     return {"type": "frame", "frame_id": int(frame_id), "timestamp": round(timestamp, 3),
             "width": width, "height": height, "face": face_data, "tracks": tracks,
             "counts": dict(Counter(t["label"] for t in tracks)), "metrics": metrics,
+            "quality": quality, "analyzed": result.analyzed,
             "perf": {"fps": round(fps, 1), "latency_ms": round(latency_ms, 1),
                      "stages_ms": {k: round(v, 1) for k, v in
                                    {**result.stages_ms, "encode": encode_ms}.items()}}}
