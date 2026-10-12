@@ -8,19 +8,29 @@ import numpy as np
 from ..domain import ZONE_IDS, FaceZone
 
 
-def _enclosed_red_skin(accepted: np.ndarray, candidates: np.ndarray) -> np.ndarray:
-    """Retain red lesion centres only when surrounded by accepted skin.
-
-    Flood the complement from every canvas edge using padding. Any remaining
-    hole is enclosed skin; non-red exclusions are barriers to restoration.
-    """
-    exterior = np.pad((~accepted).astype(np.uint8), 1, constant_values=1)
-    cv2.floodFill(exterior, None, (0, 0), 2, flags=8)
-    holes = exterior[1:-1, 1:-1] == 1
-    count, labels = cv2.connectedComponents(holes.astype(np.uint8), connectivity=8)
-    invalid = np.bincount(labels[holes & ~candidates], minlength=count) > 0
-    invalid[0] = True
-    return holes & ~invalid[labels]
+def _enclosed_red_skin(
+    accepted: np.ndarray, candidates: np.ndarray, skin: np.ndarray
+) -> np.ndarray:
+    """Restore components with at least 60% accepted skin on their non-neutral ring."""
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(
+        candidates.astype(np.uint8), connectivity=8
+    )
+    labels = np.pad(labels, 1)
+    accepted = np.pad(accepted, 1)
+    # Preserve rejection at the canvas boundary; only actual zone-zero pixels
+    # (oval and feature exclusions) are neutral.
+    skin = np.pad(skin, 1, constant_values=True)
+    restored = np.zeros(count, bool)
+    kernel = np.ones((3, 3), np.uint8)
+    for label in range(1, count):
+        x, y, width, height, _ = stats[label]
+        region = np.s_[y:y + height + 2, x:x + width + 2]
+        component = labels[region] == label
+        ring = cv2.dilate(component.astype(np.uint8), kernel).astype(bool) & ~component
+        border = ring & skin[region]
+        total = np.count_nonzero(border)
+        restored[label] = total > 0 and np.count_nonzero(border & accepted[region]) >= 0.6 * total
+    return restored[labels[1:-1, 1:-1]]
 
 
 def refine_zone_map(
@@ -36,7 +46,7 @@ def refine_zone_map(
     Use the pooled cheeks when they contain at least 300 pixels, otherwise all
     zone pixels. This adapts to skin tone without letting a large hair fringe
     dominate the reference. Low-chroma pixels are rejected relative to that skin.
-    Red-only holes enclosed by accepted skin are retained as possible lesions.
+    Red components mostly bordered by accepted skin are retained as possible lesions.
     """
     if zone_map.ndim != 2 or lab.shape != (*zone_map.shape, 3):
         raise ValueError("Lab canvas must match the two-dimensional zone map")
@@ -62,5 +72,5 @@ def refine_zone_map(
     ok = skin & colour_ok & (np.abs(d[..., 1]) < max_da)
     red = skin & colour_ok & (d[..., 1] >= max_da)
     if red.any():
-        ok |= _enclosed_red_skin(ok, red)
+        ok |= _enclosed_red_skin(ok, red, skin)
     return np.where(ok, zone_map, 0).astype(zone_map.dtype)

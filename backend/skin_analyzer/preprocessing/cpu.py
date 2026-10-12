@@ -70,6 +70,8 @@ def suppress_specular(
     grown = cv2.dilate(mask.astype(np.uint8), np.ones((3, 3), np.uint8))
     if roi_mask is not None:
         grown &= roi_mask
+    if not grown.any():
+        return bgr
     ys, xs = np.nonzero(grown)
     y0, y1 = max(0, ys.min() - 3), min(bgr.shape[0], ys.max() + 4)
     x0, x1 = max(0, xs.min() - 3), min(bgr.shape[1], xs.max() + 4)
