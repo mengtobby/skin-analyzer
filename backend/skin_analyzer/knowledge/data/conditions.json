@@ -1,0 +1,389 @@
+[
+  {
+    "id": "inflammatory_acne",
+    "title": "Inflammatory acne",
+    "summary": "Tracked raised inflammatory features may be compatible with acne; the camera cannot confirm a diagnosis.",
+    "mechanisms": [
+      "Sebum and follicular hyperkeratinisation can block pilosebaceous follicles.",
+      "Cutibacterium (formerly Propionibacterium) acnes and immune inflammation contribute to inflamed lesions."
+    ],
+    "contributing_factors": [
+      "Occlusive products and repeated friction can worsen susceptible skin.",
+      "Androgen sensitivity and genetic predisposition can contribute; hygiene alone does not explain acne."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Seek a dermatologist for painful nodules or cysts, scarring, or persistent acne.",
+    "ingredient_targets": [
+      {
+        "id": "benzoyl_peroxide",
+        "weight": 1.0,
+        "rationale": "Targets inflammatory acne-associated bacteria."
+      },
+      {
+        "id": "salicylic_acid",
+        "weight": 0.9,
+        "rationale": "Helps follicular blockage."
+      },
+      {
+        "id": "adapalene",
+        "weight": 0.85,
+        "rationale": "Helps prevent blocked follicles."
+      },
+      {
+        "id": "azelaic_acid",
+        "weight": 0.6,
+        "rationale": "Supports acne and residual marks."
+      },
+      {
+        "id": "niacinamide",
+        "weight": 0.4,
+        "rationale": "Supports the barrier during acne care."
+      },
+      {
+        "id": "ceramides",
+        "weight": 0.3,
+        "rationale": "Supports tolerance of drying treatments."
+      }
+    ]
+  },
+  {
+    "id": "comedonal_acne",
+    "title": "Comedonal acne",
+    "summary": "Tracked plugged-follicle features may resemble blackheads or whiteheads.",
+    "mechanisms": [
+      "Retention of keratin within follicles forms comedones.",
+      "Sebum and follicular shedding influence obstruction."
+    ],
+    "contributing_factors": [
+      "Occlusive cosmetics and hair products can contribute.",
+      "Genetic and androgen-related factors vary between people."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Seek advice for persistent breakouts, scarring or new painful nodules.",
+    "ingredient_targets": [
+      {
+        "id": "adapalene",
+        "weight": 1.0,
+        "rationale": "Normalizes follicular shedding."
+      },
+      {
+        "id": "salicylic_acid",
+        "weight": 0.9,
+        "rationale": "Helps reduce follicular plugs."
+      },
+      {
+        "id": "azelaic_acid",
+        "weight": 0.5,
+        "rationale": "May support acne care."
+      },
+      {
+        "id": "ceramides",
+        "weight": 0.3,
+        "rationale": "Supports treatment tolerance."
+      }
+    ]
+  },
+  {
+    "id": "post_inflammatory_erythema",
+    "title": "Post-inflammatory erythema",
+    "summary": "Flat red marks can persist after inflammation; they are not necessarily active acne.",
+    "mechanisms": [
+      "Residual superficial vascular changes can follow inflammation.",
+      "Barrier irritation can prolong visible redness."
+    ],
+    "contributing_factors": [
+      "Picking and friction can sustain inflammation.",
+      "UV exposure and over-exfoliation can worsen recovery."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Seek advice for persistent or worsening redness, pain, or recurring flushing that could suggest rosacea.",
+    "ingredient_targets": [
+      {
+        "id": "azelaic_acid",
+        "weight": 0.8,
+        "rationale": "May support acne-related marks; redness response varies."
+      },
+      {
+        "id": "niacinamide",
+        "weight": 0.6,
+        "rationale": "Supports barrier recovery."
+      },
+      {
+        "id": "panthenol",
+        "weight": 0.5,
+        "rationale": "Supports hydration and comfort."
+      },
+      {
+        "id": "sunscreen_spf30",
+        "weight": 0.9,
+        "rationale": "Limits UV-related discoloration during recovery."
+      }
+    ]
+  },
+  {
+    "id": "diffuse_redness",
+    "title": "Diffuse redness",
+    "summary": "Broad redness may reflect irritation, flushing or other conditions; lighting affects the estimate.",
+    "mechanisms": [
+      "Vascular dilation can increase visible redness.",
+      "An impaired barrier can amplify irritant responses."
+    ],
+    "contributing_factors": [
+      "Heat, UV exposure and individual flushing triggers may contribute.",
+      "Harsh cleansers or multiple irritating actives may disrupt the barrier."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Persistent flushing, visible vessels or eye irritation warrant assessment for rosacea; seek urgent care for severe swelling.",
+    "ingredient_targets": [
+      {
+        "id": "ceramides",
+        "weight": 0.9,
+        "rationale": "Supports the barrier."
+      },
+      {
+        "id": "panthenol",
+        "weight": 0.8,
+        "rationale": "Supports hydration and comfort."
+      },
+      {
+        "id": "centella_asiatica",
+        "weight": 0.5,
+        "rationale": "May soothe; evidence is limited."
+      },
+      {
+        "id": "niacinamide",
+        "weight": 0.4,
+        "rationale": "May support barrier function."
+      },
+      {
+        "id": "sunscreen_spf30",
+        "weight": 0.6,
+        "rationale": "Reduces UV exposure."
+      }
+    ]
+  },
+  {
+    "id": "hyperpigmentation",
+    "title": "Hyperpigmentation",
+    "summary": "Uneven darker areas can follow inflammation or sun exposure; a camera cannot distinguish benign spots from concerning lesions.",
+    "mechanisms": [
+      "Inflammation may stimulate excess melanin production.",
+      "UV exposure can increase melanin and prolong discoloration."
+    ],
+    "contributing_factors": [
+      "Picking or irritating treatments can leave persistent pigment changes.",
+      "Sun exposure and hormonal influences may contribute; appearance alone cannot establish the cause."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Changing or irregular pigmented spots need prompt assessment: ABCDE means asymmetry, border irregularity, color variation, diameter and evolution; melanoma can also be small.",
+    "ingredient_targets": [
+      {
+        "id": "azelaic_acid",
+        "weight": 0.9,
+        "rationale": "Helps post-inflammatory uneven tone."
+      },
+      {
+        "id": "vitamin_c",
+        "weight": 0.7,
+        "rationale": "May improve uneven tone."
+      },
+      {
+        "id": "tranexamic_acid",
+        "weight": 0.65,
+        "rationale": "Topical pigmentation option with evolving evidence."
+      },
+      {
+        "id": "niacinamide",
+        "weight": 0.6,
+        "rationale": "May reduce uneven pigmentation."
+      },
+      {
+        "id": "sunscreen_spf30",
+        "weight": 1.0,
+        "rationale": "Limits UV-driven darkening."
+      },
+      {
+        "id": "retinol",
+        "weight": 0.4,
+        "rationale": "May support gradual tone improvement."
+      }
+    ]
+  },
+  {
+    "id": "uneven_texture",
+    "title": "Uneven texture",
+    "summary": "Camera-estimated surface irregularity may reflect roughness, pores or lighting; it does not measure scars reliably.",
+    "mechanisms": [
+      "Uneven surface shedding can create roughness.",
+      "Barrier dryness and follicular features can alter the visible surface."
+    ],
+    "contributing_factors": [
+      "Over-cleansing can increase roughness and irritation.",
+      "UV exposure and acne history may affect texture."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Seek advice for scarring, persistent rough patches, bleeding or changing lesions.",
+    "ingredient_targets": [
+      {
+        "id": "lactic_acid",
+        "weight": 0.8,
+        "rationale": "Gentle surface exfoliation option."
+      },
+      {
+        "id": "glycolic_acid",
+        "weight": 0.7,
+        "rationale": "Helps surface roughness."
+      },
+      {
+        "id": "retinol",
+        "weight": 0.65,
+        "rationale": "May improve texture over time."
+      },
+      {
+        "id": "ceramides",
+        "weight": 0.6,
+        "rationale": "Supports dry rough skin."
+      },
+      {
+        "id": "hyaluronic_acid",
+        "weight": 0.4,
+        "rationale": "Improves surface hydration."
+      }
+    ]
+  },
+  {
+    "id": "dehydration_fine_lines",
+    "title": "Dehydration and fine lines",
+    "summary": "Fine lines may be accentuated by surface dryness; the camera cannot establish dehydration or biological age.",
+    "mechanisms": [
+      "Reduced stratum-corneum water can accentuate surface lines.",
+      "Natural aging and UV-related changes can also produce lines."
+    ],
+    "contributing_factors": [
+      "Dry air and harsh cleansing can increase surface water loss.",
+      "A disrupted barrier may reduce moisture retention."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Seek advice for persistent cracking, inflamed dry skin or rapid unexplained changes.",
+    "ingredient_targets": [
+      {
+        "id": "hyaluronic_acid",
+        "weight": 1.0,
+        "rationale": "Adds surface hydration."
+      },
+      {
+        "id": "ceramides",
+        "weight": 0.9,
+        "rationale": "Supports moisture retention."
+      },
+      {
+        "id": "panthenol",
+        "weight": 0.7,
+        "rationale": "Supports hydration."
+      },
+      {
+        "id": "retinol",
+        "weight": 0.35,
+        "rationale": "May improve persistent fine lines; start slowly."
+      },
+      {
+        "id": "sunscreen_spf30",
+        "weight": 0.7,
+        "rationale": "Reduces further UV-related damage."
+      }
+    ]
+  },
+  {
+    "id": "excess_sebum",
+    "title": "Excess sebum",
+    "summary": "Higher T-zone shine may suggest oiliness; glare, sweat and lighting can produce a similar camera signal.",
+    "mechanisms": [
+      "Sebaceous glands produce lipids under androgen influence.",
+      "The T-zone often has greater sebaceous activity than the cheeks."
+    ],
+    "contributing_factors": [
+      "Occlusive products may accentuate shine.",
+      "Aggressive cleansing can irritate skin without solving sebum production."
+    ],
+    "zone_notes": {
+      "forehead": "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause.",
+      "nose": "Nose: sebaceous gland density is high; visible sebaceous filaments are normal and should not automatically be treated as acne.",
+      "left_cheek": "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "right_cheek": "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+      "chin": "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone.",
+      "other": "Other areas: distribution alone cannot identify a medical cause or an internal organ problem."
+    },
+    "see_a_professional": "Seek advice if oiliness accompanies persistent acne, painful nodules or sudden changes.",
+    "ingredient_targets": [
+      {
+        "id": "niacinamide",
+        "weight": 0.9,
+        "rationale": "May help reduce shine while supporting the barrier."
+      },
+      {
+        "id": "zinc_pca",
+        "weight": 0.6,
+        "rationale": "May help oily appearance; evidence is limited."
+      },
+      {
+        "id": "salicylic_acid",
+        "weight": 0.6,
+        "rationale": "Helps associated follicular blockage."
+      },
+      {
+        "id": "ceramides",
+        "weight": 0.3,
+        "rationale": "Supports barrier-friendly care."
+      }
+    ]
+  }
+]

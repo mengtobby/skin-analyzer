@@ -1,0 +1,181 @@
+[
+  {
+    "id": "salicylic_acid",
+    "name": "Salicylic acid (BHA)",
+    "function": "Helps clear follicular plugs and exfoliate oily skin.",
+    "cautions": [
+      "May dry or sting; avoid with salicylate allergy.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": [
+      "glycolic_acid",
+      "lactic_acid"
+    ]
+  },
+  {
+    "id": "benzoyl_peroxide",
+    "name": "Benzoyl peroxide",
+    "function": "Reduces acne-associated bacteria and inflammatory lesions.",
+    "cautions": [
+      "May irritate skin and bleach fabrics.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": [
+      "adapalene",
+      "retinol",
+      "vitamin_c"
+    ]
+  },
+  {
+    "id": "adapalene",
+    "name": "Adapalene",
+    "function": "Retinoid that normalizes follicular shedding and helps prevent acne.",
+    "cautions": [
+      "Avoid in pregnancy or when planning pregnancy; introduce gradually.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": [
+      "benzoyl_peroxide"
+    ]
+  },
+  {
+    "id": "azelaic_acid",
+    "name": "Azelaic acid",
+    "function": "Helps acne and post-inflammatory discoloration.",
+    "cautions": [
+      "Temporary stinging can occur; start slowly.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "niacinamide",
+    "name": "Niacinamide",
+    "function": "Supports barrier function and may improve oiliness and uneven tone.",
+    "cautions": [
+      "High concentrations can sting sensitive skin.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "zinc_pca",
+    "name": "Zinc PCA",
+    "function": "May help oily skin; clinical evidence is limited.",
+    "cautions": [
+      "Patch test; benefits vary by formulation.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "glycolic_acid",
+    "name": "Glycolic acid (AHA)",
+    "function": "Exfoliates surface skin for uneven texture and tone.",
+    "cautions": [
+      "Can irritate and increase sun sensitivity; do not layer exfoliating acids.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": [
+      "salicylic_acid",
+      "lactic_acid"
+    ]
+  },
+  {
+    "id": "lactic_acid",
+    "name": "Lactic acid (AHA)",
+    "function": "Surface exfoliation with humectant properties.",
+    "cautions": [
+      "Can irritate and increase sun sensitivity; do not layer exfoliating acids.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": [
+      "salicylic_acid",
+      "glycolic_acid"
+    ]
+  },
+  {
+    "id": "retinol",
+    "name": "Retinol",
+    "function": "May improve fine lines and uneven texture over time.",
+    "cautions": [
+      "Avoid in pregnancy or when planning pregnancy; dryness is common initially.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": [
+      "benzoyl_peroxide"
+    ]
+  },
+  {
+    "id": "vitamin_c",
+    "name": "Vitamin C",
+    "function": "Antioxidant support and potential improvement in uneven tone.",
+    "cautions": [
+      "Acidic formulations can sting; potency and stability vary.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": [
+      "benzoyl_peroxide"
+    ]
+  },
+  {
+    "id": "tranexamic_acid",
+    "name": "Tranexamic acid",
+    "function": "Topical option for uneven pigmentation; evidence is still developing.",
+    "cautions": [
+      "Patch test; persistent pigment changes need professional assessment.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "hyaluronic_acid",
+    "name": "Hyaluronic acid",
+    "function": "Humectant that improves temporary surface hydration.",
+    "cautions": [
+      "Apply with moisturizer; does not permanently remove wrinkles.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "ceramides",
+    "name": "Ceramides",
+    "function": "Support the skin lipid barrier and reduce moisture loss.",
+    "cautions": [
+      "Choose a formulation suited to your skin; patch test.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "panthenol",
+    "name": "Panthenol",
+    "function": "Humectant supporting comfort and barrier care.",
+    "cautions": [
+      "Rare contact allergy is possible; stop if irritation develops.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "centella_asiatica",
+    "name": "Centella asiatica",
+    "function": "May soothe skin; evidence and extract composition vary.",
+    "cautions": [
+      "Botanical extracts can cause contact allergy.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  },
+  {
+    "id": "sunscreen_spf30",
+    "name": "Broad-spectrum sunscreen SPF 30+",
+    "function": "Reduces UV exposure contributing to pigment changes and photoaging.",
+    "cautions": [
+      "Apply generously and reapply per label; patch test sensitive skin.",
+      "Introduce one new active at a time and stop if persistent irritation occurs."
+    ],
+    "conflicts": []
+  }
+]
