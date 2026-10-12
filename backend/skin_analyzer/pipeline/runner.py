@@ -33,6 +33,8 @@ class PipelineRunner:
         self._condition = threading.Condition()
         self._analysis_lock = threading.Lock()
         self._stop = threading.Event()
+        self._stop_notified = False
+        self._closed = False
         self._thread: threading.Thread | None = None
         self._packet: bytes | None = None
         self._version = self._report_version = 0
@@ -50,6 +52,8 @@ class PipelineRunner:
 
     def start(self) -> None:
         with self._condition:
+            if self._closed:
+                raise RuntimeError("Pipeline runner is closed")
             if self._thread is not None and self._thread.is_alive():
                 if self._stop.is_set():
                     raise RuntimeError("Previous pipeline worker has not stopped")
@@ -59,24 +63,47 @@ class PipelineRunner:
             if self._thread is not None and self._source_factory is not None:
                 self.source = self._source_factory()
             self._stop = threading.Event()
+            self._stop_notified = False
+            self._close_thread = None
             self._last_frame = self._last_report = self._fps = 0.0
             self.source.start()
             self._thread = threading.Thread(target=self._run, daemon=True, name="skin-pipeline")
             self._thread.start()
 
     def stop(self) -> None:
-        self._stop.set()
-        with self._condition:
-            self._condition.notify_all()
+        self._notify_stop()
         deadline = time.monotonic() + 3.0
-        if self._close_thread is None or not self._close_thread.is_alive():
-            self._close_thread = threading.Thread(target=self._close_source, daemon=True)
-            self._close_thread.start()
+        with self._condition:
+            if self._close_thread is None:
+                self._close_thread = threading.Thread(target=self._close_source, daemon=True)
+                self._close_thread.start()
         for thread in (self._thread, self._close_thread):
             if thread is not None and thread is not threading.current_thread():
                 thread.join(max(0.0, deadline - time.monotonic()))
                 if thread.is_alive():
                     logger.warning("Pipeline shutdown timed out: %s", thread.name)
+
+    def _notify_stop(self) -> None:
+        with self._condition:
+            self._stop.set()
+            self._condition.notify_all()
+            if self._stop_notified:
+                return
+            self._stop_notified = True
+        self._notify_listeners()
+
+    def close(self) -> None:
+        with self._condition:
+            if self._closed:
+                return
+            self._closed = True
+        self.stop()
+        try:
+            close = getattr(self.analyzer.landmarker, "close", None)
+            if callable(close):
+                close()
+        except Exception as exc:
+            self._log_failure("Landmarker close failed", exc)
 
     def _close_source(self) -> None:
         try:
@@ -135,7 +162,7 @@ class PipelineRunner:
         try:
             self._run_frames()
         finally:
-            self._notify_listeners()
+            self._notify_stop()
 
     def _run_frames(self) -> None:
         while not self._stop.is_set():
@@ -218,7 +245,7 @@ class PipelineRunner:
             raise ValueError("version and timeout must be nonnegative")
         with self._condition:
             self._condition.wait_for(
-                lambda: self._version > after_version and not self._stop.is_set(), timeout)
+                lambda: self._version > after_version or self._stop.is_set(), timeout)
             if not self._stop.is_set() and self._version > after_version and self._packet is not None:
                 return self._version, self._packet
             return None

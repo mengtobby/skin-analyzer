@@ -52,7 +52,7 @@ def _evidence(condition: str, counts: Counter[str], zones: tuple[FaceZone, ...],
             text = f"{count} inflamed {noun} tracked ({details})"
         else:
             text = f"{details} tracked"
-        location = ", ".join(sorted(z.value.replace('_', ' ') for z in zones))
+        location = ", ".join(z.value.replace('_', ' ') for z in zones)
         evidence.append(f"{text} on {location}" if location else text)
     if field and value > 0:
         scope = "in the T-zone (maximum)" if condition == "excess_sebum" else "across the face"
@@ -98,6 +98,7 @@ def _finding(condition: str, tracks: Sequence[Track], metrics: SkinMetrics | Non
         return None
     counts = Counter(t.label.value for t in matched)
     zones = {t.zone for t in matched}
+    lesion_zones = tuple(z for z in FaceZone if z in zones)
     if metric_trigger and metrics is not None:
         zones.update(z for z, m in metrics.zones.items()
                      if getattr(m, field) >= threshold and
@@ -110,7 +111,7 @@ def _finding(condition: str, tracks: Sequence[Track], metrics: SkinMetrics | Non
     lesion_score = (1 - exp(-count / 3)) * (0.5 + 0.5 * confidence)
     score = 1 - (1 - lesion_score) * (1 - 0.6 * value / 100)
     severity = "mild" if score < 0.35 else "moderate" if score < 0.65 else "notable"
-    text = _evidence(condition, counts, ordered, field, value)
+    text = _evidence(condition, counts, lesion_zones, field, value)
     return Finding(condition, kb.conditions[condition].title, severity, score,
                    count, ordered, text)
 
