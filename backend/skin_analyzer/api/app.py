@@ -61,8 +61,8 @@ def _trusted_settings(settings: Settings) -> tuple[set[str], set[str]]:
                f"http://[::1]:{settings.port}", *settings.extra_origins}
     hosts = {"localhost", "127.0.0.1", "::1"}
     if settings.host not in {"0.0.0.0", "::"}:
-        host = settings.host.strip("[]")
-        hosts.add(host.lower())
+        host = settings.host.strip("[]").lower()  # browsers send lowercase origins
+        hosts.add(host)
         authority = f"[{host}]" if ":" in host else host
         origins.add(f"http://{authority}:{settings.port}")
     else:

@@ -98,6 +98,12 @@ class PipelineRunner:
                 return
             self._closed = True
         self.stop()
+        worker = self._thread
+        if worker is not None and worker.is_alive():
+            # stop() timed out: the worker may still be inside landmarker.detect(); closing the
+            # native graph under it could crash. Leave it to process exit instead.
+            logger.warning("Pipeline worker still running after stop(); skipping landmarker close")
+            return
         try:
             close = getattr(self.analyzer.landmarker, "close", None)
             if callable(close):

@@ -350,7 +350,8 @@ def test_untrusted_hosts(host, tmp_path) -> None:
 
 
 @pytest.mark.parametrize("host,origin", [("192.168.1.5", "http://192.168.1.5:8000"),
-                                        ("::1", "http://[::1]:8000")])
+                                        ("::1", "http://[::1]:8000"),
+                                        ("MyPC", "http://mypc:8000")])
 def test_served_origins(host, origin) -> None:
     with TestClient(headers={"host": "localhost"}, app=create_app(Settings(host=host), FakeRunner()), base_url=origin) as client:
         assert client.post("/api/reset", headers={"origin": origin}).status_code == 200

@@ -366,3 +366,19 @@ def test_close_releases_resources_once(monkeypatch, caplog, fails):
         assert "Landmarker close failed" in caplog.text
     with pytest.raises(RuntimeError, match="closed"):
         runner.start()
+
+
+def test_close_skips_landmarker_while_worker_is_hung(monkeypatch, caplog):
+    runner, _ = empty_runner(monkeypatch)
+    calls = []
+    monkeypatch.setattr(runner.analyzer.landmarker, "close", lambda: calls.append("landmarker"))
+    monkeypatch.setattr(runner, "stop", lambda: None)
+
+    class HungWorker:
+        def is_alive(self) -> bool:
+            return True
+
+    runner._thread = HungWorker()
+    runner.close()
+    assert calls == []
+    assert "skipping landmarker close" in caplog.text
