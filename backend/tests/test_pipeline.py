@@ -420,3 +420,25 @@ def test_rejected_frame_preserves_report(monkeypatch):
     runner._publish_report(rejected)
     assert calls == [(accepted.tracks, accepted.metrics, True)]
     assert runner.latest_report() == report
+
+
+def test_gap_then_rejected_frame_replaces_previous_report(monkeypatch):
+    """A returning (possibly different) face whose first frame fails quality must not
+    keep seeing the previous person's findings."""
+    from .test_scheduling import seeded_analyzer
+
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    analyzer.analysis_every = 1
+    runner = PipelineRunner(Settings(), FakeSource(image), analyzer, KnowledgeBase.load())
+    runner._publish_report(analyzer.process(image, 0))
+    _, before = runner.latest_report()
+    assert before["findings"] and before["face_detected"] is True
+
+    gap = analyzer.tracker.params.face_lost_timeout_s + 1  # no frames in between
+    returning = analyzer.process(np.zeros_like(image), gap)
+    assert returning.quality is not None and not returning.quality.ok
+    runner._publish_report(returning)
+    _, after = runner.latest_report()
+    assert after != before
+    assert after["findings"] == [] and after["insights"] == []
+    assert after["face_detected"] is True
