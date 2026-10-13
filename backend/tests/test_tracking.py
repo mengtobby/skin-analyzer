@@ -92,6 +92,24 @@ def test_face_loss_timeout_and_reset() -> None:
     assert tracker.update([detection(frame())], frame(), 6)[0].track_id == 1
 
 
+def test_clear_drops_tracks_and_lifecycle_but_preserves_ids() -> None:
+    tracker = LesionTracker(TrackerParams(min_hits=1))
+    face = frame()
+    tracks = tracker.update([detection(face), detection(face, (.4, .5))], face, 0)
+    previous_max = max(track.track_id for track in tracks)
+    tracker.update([], None, .1)
+    tracker.clear()
+    assert tracker.project(face, .2) == []
+    assert tracker._last_face is None and tracker._lost_since is None
+    track = tracker.update([detection(face)], face, .2)[0]
+    assert track.track_id > previous_max
+    assert (track.age, track.hits, track.misses) == (1, 1, 0)
+    tracker.clear()
+    assert tracker.update([detection(face)], face, .3)[0].track_id > track.track_id
+    tracker.reset()
+    assert tracker.update([detection(face)], face, .4)[0].track_id == 1
+
+
 def test_label_compatibility_majority_and_confidence() -> None:
     tracker = LesionTracker(TrackerParams(min_hits=1))
     for index in range(20):

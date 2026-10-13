@@ -188,6 +188,33 @@ def test_face_stream_gap_invalidates_analysis_and_smoothing(monkeypatch, gap_fac
         assert analyzer.smoother._last is smoother_state
 
 
+@pytest.mark.parametrize("face_lost", [False, True])
+def test_invalidated_face_never_reuses_confirmed_track_ids(monkeypatch, face_lost):
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    analyzer.tracker = LesionTracker()
+    analyzer.analysis_every = 1
+    for index in range(analyzer.tracker.params.min_hits):
+        accepted = analyzer.process(image, index / 30)
+    previous_max = max(track.track_id for track in accepted.tracks)
+    gap = analyzer.tracker.params.face_lost_timeout_s + 1
+    if face_lost:
+        landmarks = analyzer.landmarker.landmarks
+        analyzer.landmarker.landmarks = None
+        analyzer.process(image, .1)
+        analyzer.process(image, gap)
+        analyzer.landmarker.landmarks = landmarks
+    for index in range(analyzer.tracker.params.min_hits):
+        returned = analyzer.process(image, gap + .1 + index / 30)
+        if index < analyzer.tracker.params.min_hits - 1:
+            assert returned.tracks == []
+    assert returned.tracks
+    assert all(track.track_id > previous_max for track in returned.tracks)
+    analyzer.reset()
+    for index in range(analyzer.tracker.params.min_hits):
+        reset = analyzer.process(image, gap + 1 + index / 30)
+    assert reset.tracks[0].track_id == 1
+
+
 def test_face_stream_gap_clears_tracks_and_quality_before_projection(monkeypatch):
     analyzer, image, _ = seeded_analyzer(monkeypatch)
     analyzer.analysis_every = 2

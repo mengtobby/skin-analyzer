@@ -96,8 +96,12 @@ class LesionTracker:
         self.reset()
 
     def reset(self) -> None:
-        self._tracks: dict[int, _Tracked] = {}
         self._next_id = 1
+        self.clear()
+
+    def clear(self) -> None:
+        """Discard tracks and lifecycle state while preserving the next track id."""
+        self._tracks: dict[int, _Tracked] = {}
         self._last_face: float | None = None
         self._lost_since: float | None = None
 

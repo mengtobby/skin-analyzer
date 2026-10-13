@@ -175,8 +175,8 @@ def test_bridged_red_lesions_use_each_peaks_half_maximum():
     dets = ClassicalDetector()._inflammatory(_spot_context(strength))
     assert len(dets) == 2
     by_peak = sorted(dets, key=lambda d: d.features["peak_delta_a"])
-    assert by_peak[0].features["peak_delta_a"] == 10.0
-    assert by_peak[1].features["peak_delta_a"] == 24.0
+    assert by_peak[0].features["peak_delta_a"] == pytest.approx(10.0)
+    assert by_peak[1].features["peak_delta_a"] == pytest.approx(24.0)
     assert by_peak[0].area_px > by_peak[1].area_px
 
 
@@ -229,3 +229,43 @@ def test_half_max_components_measure_weaker_piece_at_its_own_peak():
         assert peak > 5.0
         assert (strength[sl][comp] >= peak / 2).all()
         assert diameter == pytest.approx(2 * np.sqrt(comp.sum() / np.pi) / 160)
+
+
+@pytest.mark.parametrize("four_connected_owners", [False, True])
+def test_diagonal_core_chains_keep_each_peaks_full_half_maximum(monkeypatch, four_connected_owners):
+    import cv2
+
+    transform = cv2.distanceTransformWithLabels
+
+    def distance_with_four_connected_components(src, distance_type, mask_size, *, labelType):
+        distance, owners = transform(src, distance_type, mask_size, labelType=cv2.DIST_LABEL_PIXEL)
+        if labelType == cv2.DIST_LABEL_CCOMP:
+            _, parts = cv2.connectedComponents((src == 0).astype(np.uint8), connectivity=4)
+            lookup = np.zeros(int(owners.max()) + 1, dtype=parts.dtype)
+            lookup[owners[src == 0]] = parts[src == 0]
+            owners = lookup[owners]
+        return distance, owners
+
+    if four_connected_owners:
+        # Exercise ownership when OpenCV's component connectivity differs from our cores.
+        monkeypatch.setattr(cv2, "distanceTransformWithLabels", distance_with_four_connected_components)
+    strength = np.zeros((20, 40), np.float32)
+    strength[8:11, 5:31] = 3.0  # weak bridge joins two separately seeded cores
+    strength[5:8, 5:8] = 14.0
+    strength[8:11, 8:11] = 14.0  # touches the first block only diagonally
+    strength[6, 6] = 24.0
+    strength[8:11, 24:27] = 6.0
+    strength[11:14, 27:30] = 6.0  # second core also has a diagonal-only link
+    strength[9, 25] = 10.0
+    pieces = list(ClassicalDetector()._half_max_components(
+        strength > 2.5, strength, 2.5, 5.0, (0.02, 0.10), 160.0
+    ))
+    assert len(pieces) == 2
+    for comp, sl, _, diameter in pieces:
+        values = strength[sl]
+        peak = float(values[comp].max())
+        expected = (values >= 12.0) if peak > 20 else ((values >= 5.0) & (values < 12.0))
+        np.testing.assert_array_equal(comp, expected)
+        assert comp.sum() == 18
+        assert peak == pytest.approx(24.0 if peak > 20 else 10.0)
+        assert diameter == pytest.approx(2 * np.sqrt(18 / np.pi) / 160)

@@ -23,6 +23,10 @@ from ..domain import ZONE_IDS, Detection, DetectionClass, FaceZone
 from .base import MM_PER_UNIT, DetectorInput, component_to_detection
 
 
+# Reject diffuse flush or shadow whose hysteresis extent dwarfs any lesion.
+MAX_EXTENT_FACTOR = 3.0
+
+
 @dataclass(frozen=True)
 class ClassicalParams:
     denoise_sigma: float = 1.0
@@ -161,7 +165,7 @@ class ClassicalDetector:
         n, labels, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), 8)
         for i in range(1, n):
             x, y, w, h, area = stats[i]
-            if _diameter_units(area, ppu) > 3 * diam_range[1]:
+            if _diameter_units(area, ppu) > MAX_EXTENT_FACTOR * diam_range[1]:
                 continue
             sl = (slice(y, y + h), slice(x, x + w))
             comp = labels[sl] == i
@@ -172,11 +176,16 @@ class ClassicalDetector:
             # Keep weaker neighbours visible even when the highest peak's half
             # maximum exceeds their seed. Each piece supplies its own peak below.
             split_level = max(floor, min(seed_threshold, 0.5 * peak))
+            # Strict comparison excludes plateaus exactly at the split level.
             core = comp & (values > split_level)
             count, parts = cv2.connectedComponents(core.astype(np.uint8), connectivity=8)
             _, owners = cv2.distanceTransformWithLabels(
-                (~core).astype(np.uint8), cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_CCOMP
+                (~core).astype(np.uint8), cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL
             )
+            # Map nearest core pixels to the same 8-connected parts used above.
+            part_by_owner = np.zeros(int(owners.max()) + 1, dtype=parts.dtype)
+            part_by_owner[owners[core]] = parts[core]
+            owners = part_by_owner[owners]
             for j in range(1, count):
                 part = parts == j
                 local_peak = float(values[part].max())
