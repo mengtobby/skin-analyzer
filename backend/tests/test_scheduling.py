@@ -186,3 +186,25 @@ def test_face_stream_gap_invalidates_analysis_and_smoothing(monkeypatch, gap_fac
         assert analyzer.last_good() == (accepted.tracks, accepted.metrics)
         assert analyzer._metrics is accepted.metrics
         assert analyzer.smoother._last is smoother_state
+
+
+def test_face_stream_gap_clears_tracks_and_quality_before_projection(monkeypatch):
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    analyzer.analysis_every = 2
+    accepted = analyzer.process(image, 0)
+    assert accepted.tracks and accepted.quality.ok
+    monkeypatch.setattr(analyzer.detector, "detect", lambda _: [])
+    gap = analyzer.tracker.params.face_lost_timeout_s + 1
+    projected = analyzer.process(image, gap)
+    assert not projected.analyzed
+    assert projected.tracks == []
+    assert projected.quality is None and projected.metrics is None
+    assert analyzer.last_good() is None
+    assert analyzer._gains is None
+    assert analyzer.smoother._last is None
+    header = build_frame_header(projected, 1, gap, image.shape[1], image.shape[0])
+    assert header["tracks"] == []
+    analyzed = analyzer.process(image, gap + 1 / 30)
+    assert analyzed.analyzed and analyzed.quality.ok
+    assert analyzed.tracks == []
+    assert analyzer.last_good() == ([], analyzed.metrics)

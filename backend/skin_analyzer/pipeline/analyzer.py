@@ -61,6 +61,11 @@ class FrameAnalyzer:
         self._last_face_seen = None
 
     def _invalidate_analysis(self) -> None:
+        """Discard temporal state that could belong to a previous face."""
+        self.tracker.reset()
+        self._quality = None
+        self._gains = None
+        self._filter.reset()
         self._last_good = None
         self._last_ok_timestamp = None
         self._metrics = None
