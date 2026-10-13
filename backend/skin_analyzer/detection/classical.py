@@ -156,26 +156,40 @@ class ClassicalDetector:
             yield labels[sl] == i, sl, (int(x), int(y)), d
 
     def _half_max_components(self, mask: np.ndarray, strength: np.ndarray, floor: float,
-                             diam_range: tuple[float, float], ppu: float):
-        """Components of ``mask`` measured at half their own peak ``strength`` (FWHM).
-
-        Faint spots keep their true extent (hysteresis), while strong lesions are not
-        inflated by their surrounding halo, so size limits mean the same for both.
-        """
+                             seed_threshold: float, diam_range: tuple[float, float], ppu: float):
+        """Yield seeded spot cores, bounded in full extent and measured at their own half peak."""
         n, labels, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), 8)
         for i in range(1, n):
-            x, y, w, h, _ = stats[i]
+            x, y, w, h, area = stats[i]
+            if _diameter_units(area, ppu) > 3 * diam_range[1]:
+                continue
             sl = (slice(y, y + h), slice(x, x + w))
             comp = labels[sl] == i
             values = strength[sl]
-            core = comp & (values >= max(floor, 0.5 * float(values[comp].max())))
+            peak = float(values[comp].max())
+            if peak <= seed_threshold:
+                continue
+            # Keep weaker neighbours visible even when the highest peak's half
+            # maximum exceeds their seed. Each piece supplies its own peak below.
+            split_level = max(floor, min(seed_threshold, 0.5 * peak))
+            core = comp & (values > split_level)
             count, parts = cv2.connectedComponents(core.astype(np.uint8), connectivity=8)
-            if count > 2:  # keep the piece that holds the peak
-                peak_at = np.unravel_index(np.argmax(np.where(core, values, -np.inf)), core.shape)
-                core = parts == parts[peak_at]
-            d = _diameter_units(float(core.sum()), ppu)
-            if diam_range[0] <= d <= diam_range[1]:
-                yield core, sl, (int(x), int(y)), d
+            _, owners = cv2.distanceTransformWithLabels(
+                (~core).astype(np.uint8), cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_CCOMP
+            )
+            for j in range(1, count):
+                part = parts == j
+                local_peak = float(values[part].max())
+                if local_peak <= seed_threshold:
+                    continue
+                peak_at = np.unravel_index(np.argmax(np.where(part, values, -np.inf)), part.shape)
+                extent = comp & (owners == owners[peak_at])
+                extent &= values >= max(floor, 0.5 * local_peak)
+                _, refined = cv2.connectedComponents(extent.astype(np.uint8), connectivity=8)
+                piece = refined == refined[peak_at]
+                d = _diameter_units(float(piece.sum()), ppu)
+                if diam_range[0] <= d <= diam_range[1]:
+                    yield piece, sl, (int(x), int(y)), d
 
     def _emit(self, ctx, comp, sl, off, label, conf, feats) -> Detection | None:
         return component_to_detection(
@@ -194,7 +208,7 @@ class ClassicalDetector:
         )
         out = []
         floor = p.hysteresis_ratio * thr
-        for comp, sl, off, d in self._half_max_components(mask, ctx.da, floor,
+        for comp, sl, off, d in self._half_max_components(mask, ctx.da, floor, thr,
                                                           p.lesion_diam_units, ctx.ppu):
             peak = float(ctx.da[sl][comp].max())
             grown = cv2.dilate(comp.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
@@ -243,7 +257,7 @@ class ClassicalDetector:
         )
         out = []
         floor = p.hysteresis_ratio * thr
-        for comp, sl, off, d in self._half_max_components(mask, -ctx.dL, floor,
+        for comp, sl, off, d in self._half_max_components(mask, -ctx.dL, floor, thr,
                                                           p.pigment_diam_units, ctx.ppu):
             contours, _ = cv2.findContours(comp.astype(np.uint8), cv2.RETR_EXTERNAL,
                                            cv2.CHAIN_APPROX_NONE)
