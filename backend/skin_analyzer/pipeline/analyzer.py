@@ -62,7 +62,7 @@ class FrameAnalyzer:
 
     def _invalidate_analysis(self) -> None:
         """Discard temporal state that could belong to a previous face."""
-        self.tracker.reset()
+        self.tracker.clear()
         self._quality = None
         self._gains = None
         self._filter.reset()
