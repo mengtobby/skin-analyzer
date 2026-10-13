@@ -17,6 +17,11 @@ LIPS = (0, 13, 14, 17, 37, 39, 40, 61, 78, 80, 81, 82, 84, 87, 88, 91, 95, 146, 
 NOSE = (1, 2, 4, 5, 6, 19, 45, 48, 64, 94, 97, 98, 115, 168, 195, 197, 220, 275, 278, 294,
         326, 327, 344, 440)
 
+# Lower nose: alae, nostril bases and columella. Nostril openings and alar creases are
+# deep, round shadows that a contrast detector cannot tell from pigmented spots
+# (measured: the dominant source of false hyperpigmentation on real webcam frames).
+NOSTRILS = (2, 19, 48, 64, 94, 97, 98, 278, 294, 326, 327)
+
 RIGHT_EYE_OUTER = 33
 LEFT_EYE_OUTER = 263
 RIGHT_EYE_INNER = 133

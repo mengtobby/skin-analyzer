@@ -25,11 +25,16 @@ def canonical_landmarks() -> np.ndarray:
     c[list(spec.LEFT_EYEBROW)] = _ellipse(len(spec.LEFT_EYEBROW), 0.32, -0.22, 0.22, 0.04)
     c[list(spec.LIPS)] = _ellipse(len(spec.LIPS), 0.0, 0.95, 0.28, 0.1)
     c[list(spec.NOSE)] = _ellipse(len(spec.NOSE), 0.0, 0.35, 0.17, 0.33)
+    # Lower nose: alae, nostril bases and columella (from real-frame measurements).
+    for idx, uv in {64: (-0.15, 0.51), 294: (0.15, 0.51), 48: (-0.13, 0.49), 278: (0.13, 0.49),
+                    98: (-0.12, 0.56), 327: (0.12, 0.56), 97: (-0.05, 0.58), 326: (0.05, 0.58),
+                    2: (0.0, 0.59), 94: (0.0, 0.58), 19: (0.0, 0.57)}.items():
+        c[idx] = uv
     c[spec.RIGHT_EYE_OUTER] = (-0.5, 0.0)
     c[spec.LEFT_EYE_OUTER] = (0.5, 0.0)
     c[spec.RIGHT_EYE_INNER] = (-0.14, 0.0)
     c[spec.LEFT_EYE_INNER] = (0.14, 0.0)
-    c[spec.NOSE_TIP] = (0.0, 0.6)
+    c[spec.NOSE_TIP] = (0.0, 0.54)
     c[spec.MOUTH_RIGHT] = (-0.28, 0.95)
     c[spec.MOUTH_LEFT] = (0.28, 0.95)
     c[spec.LOWER_LIP_BOTTOM] = (0.0, 1.05)

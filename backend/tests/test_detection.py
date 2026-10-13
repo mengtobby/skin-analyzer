@@ -119,3 +119,35 @@ def test_create_detector_falls_back_without_model(tmp_path: Path):
         create_detector("onnx", tmp_path / "missing.onnx")
     with pytest.raises(ValueError):
         create_detector("magic")
+
+
+def test_hysteresis_keeps_soft_edged_spot_at_true_extent():
+    from skin_analyzer.detection.classical import hysteresis
+
+    strong = np.zeros((20, 20), bool)
+    weak = np.zeros((20, 20), bool)
+    weak[5:12, 5:12] = True  # true extent of a soft-edged spot
+    strong[8, 8] = True  # only its core passes the strict threshold
+    weak[15:18, 15:18] = True  # weak-only noise blob without a seed
+    kept = hysteresis(strong, weak)
+    assert kept[5:12, 5:12].all()
+    assert not kept[15:18, 15:18].any()
+    assert kept.sum() == 49
+
+
+def test_detects_soft_low_contrast_pigment_spot():
+    from dataclasses import replace as dc_replace
+
+    inp = _input(render_face(LANDMARKS, seed=7))
+    cx, cy = inp.region.image_to_canvas_pts(np.array([_img_pt(-0.45, 0.5)]))[0]
+    yy, xx = np.mgrid[0:inp.canvas_lab.shape[0], 0:inp.canvas_lab.shape[1]]
+    sigma = 2.5 * (160 / 90) / 1.5  # 2.5 mm radius soft-edged spot on the canvas
+    g = np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2 * sigma**2)).astype(np.float32)
+    lab = inp.canvas_lab.copy()
+    lab[..., 0] -= 9.0 * g
+    lab[..., 2] += 2.7 * g
+    params = ClassicalParams(dark_k=4.0, dark_floor=7.0, pigment_diam_units=(0.03, 0.20))
+    dets = ClassicalDetector(params).detect(dc_replace(inp, canvas_lab=lab))
+    spot = inp.region.canvas_to_image(np.array([[cx, cy]]))[0]
+    hits = [d for d in _near(dets, spot) if d.label is DetectionClass.HYPERPIGMENTATION]
+    assert hits, dets

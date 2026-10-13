@@ -29,23 +29,28 @@ class ClassicalParams:
     local_sigma_units: float = 0.10
     broad_sigma_units: float = 0.30
     boundary_units: float = 0.035
-    red_k: float = 3.0
-    red_floor: float = 4.0
+    # Calibrated on real 1280x720 webcam frames in even frontal light (local noise:
+    # sigma L* ~2.0, sigma a* ~1.1) against synthetic lesions injected into those frames:
+    # ~0.7 raw false detections/frame on clear skin; recall 100% for +9 a* red lesions,
+    # 98% for -10 L* / 68% for -8 L* pigmented spots (2.5 mm radius).
+    red_k: float = 3.5
+    red_floor: float = 5.0
     papule_k: float = 4.5
     papule_floor: float = 8.0
     pustule_l_floor: float = 5.0
-    patch_k: float = 2.0
-    patch_floor: float = 3.0
-    dark_k: float = 3.0
-    dark_floor: float = 5.0
+    patch_k: float = 4.0  # cheeks are physiologically 3-5 a* redder than the forehead
+    patch_floor: float = 6.0
+    dark_k: float = 3.5
+    dark_floor: float = 6.0
     lesion_diam_units: tuple[float, float] = (0.02, 0.10)
     patch_diam_units: tuple[float, float] = (0.12, 0.45)
-    pigment_diam_units: tuple[float, float] = (0.02, 0.20)
-    texture_ratio: float = 2.5
-    texture_min_diam_units: float = 0.10
-    ridge_k: float = 5.0
-    line_min_len_units: float = 0.07
-    line_min_aspect: float = 3.5
+    pigment_diam_units: tuple[float, float] = (0.03, 0.20)
+    texture_ratio: float = 5.0
+    texture_min_diam_units: float = 0.18
+    ridge_k: float = 8.0
+    line_min_len_units: float = 0.12
+    line_min_aspect: float = 5.5
+    hysteresis_ratio: float = 0.5  # region growth threshold as a fraction of the seed threshold
     max_per_class: int = 20
     enabled: frozenset[DetectionClass] = frozenset(DetectionClass)
 
@@ -77,6 +82,19 @@ def masked_blur(img: np.ndarray, mask: np.ndarray, sigma_px: float) -> np.ndarra
     if factor > 1:
         out = cv2.resize(out, (w, h), interpolation=cv2.INTER_LINEAR)
     return out
+
+
+def hysteresis(strong: np.ndarray, weak: np.ndarray) -> np.ndarray:
+    """Keep the connected regions of ``weak`` that contain at least one ``strong`` pixel.
+
+    Strict seeds control false positives; growing to the weak threshold recovers a
+    soft-edged spot's true extent, so size filters see its real size.
+    """
+    count, labels = cv2.connectedComponents(weak.astype(np.uint8), connectivity=8)
+    seeded = np.zeros(count, bool)
+    seeded[labels[strong & weak]] = True
+    seeded[0] = False
+    return seeded[labels]
 
 
 def _diameter_units(area_px: float, ppu: float) -> float:
@@ -137,6 +155,28 @@ class ClassicalDetector:
             sl = (slice(y, y + h), slice(x, x + w))
             yield labels[sl] == i, sl, (int(x), int(y)), d
 
+    def _half_max_components(self, mask: np.ndarray, strength: np.ndarray, floor: float,
+                             diam_range: tuple[float, float], ppu: float):
+        """Components of ``mask`` measured at half their own peak ``strength`` (FWHM).
+
+        Faint spots keep their true extent (hysteresis), while strong lesions are not
+        inflated by their surrounding halo, so size limits mean the same for both.
+        """
+        n, labels, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), 8)
+        for i in range(1, n):
+            x, y, w, h, _ = stats[i]
+            sl = (slice(y, y + h), slice(x, x + w))
+            comp = labels[sl] == i
+            values = strength[sl]
+            core = comp & (values >= max(floor, 0.5 * float(values[comp].max())))
+            count, parts = cv2.connectedComponents(core.astype(np.uint8), connectivity=8)
+            if count > 2:  # keep the piece that holds the peak
+                peak_at = np.unravel_index(np.argmax(np.where(core, values, -np.inf)), core.shape)
+                core = parts == parts[peak_at]
+            d = _diameter_units(float(core.sum()), ppu)
+            if diam_range[0] <= d <= diam_range[1]:
+                yield core, sl, (int(x), int(y)), d
+
     def _emit(self, ctx, comp, sl, off, label, conf, feats) -> Detection | None:
         return component_to_detection(
             comp, off, label, conf, ctx.inp.zone_map[sl], ctx.inp.region, feats
@@ -147,11 +187,15 @@ class ClassicalDetector:
         thr = max(p.red_floor, p.red_k * ctx.sig_a)
         papule_thr = max(p.papule_floor, p.papule_k * ctx.sig_a)
         bright_thr = max(p.pustule_l_floor, 2.5 * ctx.sig_l)
+        strong = (ctx.da > thr) & ctx.core
+        weak = (ctx.da > p.hysteresis_ratio * thr) & ctx.core
         mask = cv2.morphologyEx(
-            ((ctx.da > thr) & ctx.core).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)
+            hysteresis(strong, weak).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)
         )
         out = []
-        for comp, sl, off, d in self._components(mask, p.lesion_diam_units, ctx.ppu):
+        floor = p.hysteresis_ratio * thr
+        for comp, sl, off, d in self._half_max_components(mask, ctx.da, floor,
+                                                          p.lesion_diam_units, ctx.ppu):
             peak = float(ctx.da[sl][comp].max())
             grown = cv2.dilate(comp.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
             head = (ctx.dL[sl] > bright_thr) & (ctx.db[sl] > 1.5) & grown
@@ -191,10 +235,16 @@ class ClassicalDetector:
         p = self.p
         thr = max(p.dark_floor, p.dark_k * ctx.sig_l)
         red_thr = max(p.red_floor, p.red_k * ctx.sig_a)
-        mask = (ctx.dL < -thr) & (ctx.da < 0.6 * red_thr) & (ctx.db > -1.0) & ctx.core
-        mask = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+        brownish = (ctx.da < 0.6 * red_thr) & (ctx.db > -1.0) & ctx.core
+        strong = (ctx.dL < -thr) & brownish
+        weak = (ctx.dL < -p.hysteresis_ratio * thr) & brownish
+        mask = cv2.morphologyEx(
+            hysteresis(strong, weak).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)
+        )
         out = []
-        for comp, sl, off, d in self._components(mask, p.pigment_diam_units, ctx.ppu):
+        floor = p.hysteresis_ratio * thr
+        for comp, sl, off, d in self._half_max_components(mask, -ctx.dL, floor,
+                                                          p.pigment_diam_units, ctx.ppu):
             contours, _ = cv2.findContours(comp.astype(np.uint8), cv2.RETR_EXTERNAL,
                                            cv2.CHAIN_APPROX_NONE)
             c = max(contours, key=cv2.contourArea)

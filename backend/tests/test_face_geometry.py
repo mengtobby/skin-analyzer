@@ -80,3 +80,28 @@ def test_one_euro_reduces_jitter_but_follows_motion():
     for i in range(60):
         out = f(np.array([i * 10.0]), i / 30.0, scale=100.0)
     assert abs(out[0] - 590.0) < 40.0
+
+
+def test_nostrils_and_alar_creases_are_excluded():
+    region = build_face_region(_landmarks())
+    for u, v in ((-0.12, 0.55), (0.12, 0.55), (-0.17, 0.52), (0.0, 0.6)):
+        x, y = region.image_to_canvas_pts(np.array([[640 + u * 200, 300 + v * 200]]))[0]
+        assert region.zone_map[int(y), int(x)] == 0, (u, v)
+    # the nose bridge stays analysable
+    assert region.zone_at_image_point((640, 300 + 0.3 * 200)) is FaceZone.NOSE
+
+
+def test_shaded_anatomy_is_excluded_but_flat_skin_kept():
+    region = build_face_region(_landmarks())
+
+    def zone_id(u, v):
+        x, y = region.image_to_canvas_pts(np.array([[640 + u * 200, 300 + v * 200]]))[0]
+        return int(region.zone_map[int(y), int(x)])
+
+    # nasal sidewalls / nasofacial grooves (mirror-symmetric shading) and the nasal root
+    for u, v in ((-0.25, 0.35), (0.25, 0.35), (-0.2, 0.3), (0.0, 0.02)):
+        assert zone_id(u, v) == 0, (u, v)
+    # flat skin and the nose dorsum stay analysable
+    assert zone_id(0.0, 0.3) == ZONE_IDS[FaceZone.NOSE]
+    assert zone_id(-0.5, 0.55) == ZONE_IDS[FaceZone.LEFT_CHEEK]
+    assert zone_id(0.0, -0.5) == ZONE_IDS[FaceZone.FOREHEAD]

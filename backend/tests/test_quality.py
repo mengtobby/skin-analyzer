@@ -11,7 +11,7 @@ from tests.synthetic_face import canonical_landmarks, place
 pytestmark = pytest.mark.unit
 
 
-def _capture(scale=120.0, nose=(0.0, 0.6), brightness=65.0):
+def _capture(scale=120.0, nose=(0.0, 0.54), brightness=65.0):
     landmarks = canonical_landmarks()
     landmarks[NOSE_TIP] = nose
     region = build_face_region(place(landmarks, scale, 0, (300, 200)))
@@ -32,7 +32,7 @@ def test_good_capture_and_no_mutation():
 
 @pytest.mark.parametrize("kwargs,issue", [
     ({"brightness": 27}, "too_dark"), ({"brightness": 90}, "too_bright"),
-    ({"scale": 60}, "too_far"), ({"nose": (0.25, 0.6)}, "turned_away"),
+    ({"scale": 60}, "too_far"), ({"nose": (0.25, 0.54)}, "turned_away"),
     ({"nose": (0, 1.1)}, "tilted"),
 ])
 def test_capture_issues(kwargs, issue):

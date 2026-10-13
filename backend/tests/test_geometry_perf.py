@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from skin_analyzer.domain import CanvasSpec, FaceZone, ZONE_IDS
 from skin_analyzer.face import landmark_spec as spec
-from skin_analyzer.face.geometry import ZoneParams, build_face_region
+from skin_analyzer.face.geometry import ZoneParams, build_face_region, shading_mask
 from tests.synthetic_face import canonical_landmarks, place
 
 def _old_hull_mask(shape: tuple[int, int], pts: np.ndarray, grow_px: float) -> np.ndarray:
@@ -37,6 +37,7 @@ def _old_zone_map(
         (spec.LEFT_EYEBROW, params.brow_margin),
         (spec.RIGHT_EYEBROW, params.brow_margin),
         (spec.LIPS, params.lip_margin),
+        (spec.NOSTRILS, params.nostril_margin),
     ):
         skin &= ~_old_hull_mask((h, w), sel(idx), margin * ppu)
 
@@ -72,6 +73,7 @@ def _old_zone_map(
         (forehead, FaceZone.FOREHEAD),
     ):
         zone = np.where(mask, ZONE_IDS[z], zone).astype(np.uint8)
+    skin &= ~shading_mask(canvas, canon, params)
     return np.where(skin, zone, 0).astype(np.uint8)
 
 

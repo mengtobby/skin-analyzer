@@ -18,6 +18,10 @@ class ZoneParams:
     eye_margin: float = 0.10
     brow_margin: float = 0.07
     lip_margin: float = 0.06
+    nostril_margin: float = 0.05
+    sidewall_inner: float = 0.06  # nasal sidewall band, inside the nose half-width
+    sidewall_outer: float = 0.10  # ... and outside it (nasofacial groove)
+    nasal_root_radius: float = 0.09
     forehead_gap: float = 0.04
     cheek_eye_gap: float = 0.08
     nose_side_gap: float = 0.03
@@ -74,6 +78,45 @@ def _canonical_grids(canvas: CanvasSpec) -> tuple[np.ndarray, np.ndarray]:
     return u, v
 
 
+def _span(lo: float, hi: float, origin: float, ppu: float, n: int) -> slice:
+    """Pixel indices whose centres (i + 0.5) / ppu + origin lie in [lo, hi]."""
+    first = int(np.ceil((lo - origin) * ppu - 0.5))
+    last = int(np.floor((hi - origin) * ppu - 0.5))
+    return slice(max(first, 0), max(min(last + 1, n), 0))
+
+
+def shading_mask(
+    canvas: CanvasSpec, canon: np.ndarray, params: ZoneParams = ZoneParams()
+) -> np.ndarray:
+    """Anatomy that frontal light always shades: nasal sidewalls, nasofacial grooves and
+    the nasal root between the inner eye corners.
+
+    Measured on real webcam frames, these mirror-symmetric shadows were the dominant
+    false 'pigmented spots' after the nostrils; real pigment does not come in mirrored
+    pairs at fixed anatomical positions. The canvas is axis-aligned with the canonical
+    frame, so the sidewall bands are plain slices and only the small root disk needs
+    per-pixel work.
+    """
+    w, h = canvas.size
+    ppu, (u0, v0) = canvas.px_per_unit, (canvas.u_range[0], canvas.v_range[0])
+    nose_u = canon[list(spec.NOSE), 0]
+    nose_c = canon[spec.NOSE_TIP, 0]
+    half = max(params.min_nose_half_width, (nose_u.max() - nose_u.min()) / 2)
+    eye_inner = canon[[spec.LEFT_EYE_INNER, spec.RIGHT_EYE_INNER]].mean(axis=0)
+    rows = _span(eye_inner[1] + 0.05, canon[list(spec.NOSE), 1].max(), v0, ppu, h)
+    mask = np.zeros((h, w), bool)
+    for lo, hi in ((nose_c - half - params.sidewall_outer, nose_c - half + params.sidewall_inner),
+                   (nose_c + half - params.sidewall_inner, nose_c + half + params.sidewall_outer)):
+        mask[rows, _span(lo, hi, u0, ppu, w)] = True
+    r = params.nasal_root_radius
+    box_rows = _span(eye_inner[1] - r, eye_inner[1] + r, v0, ppu, h)
+    box_cols = _span(eye_inner[0] - r, eye_inner[0] + r, u0, ppu, w)
+    u, v = _canonical_grids(canvas)
+    du, dv = u[box_rows, box_cols] - eye_inner[0], v[box_rows, box_cols] - eye_inner[1]
+    mask[box_rows, box_cols] |= du * du + dv * dv <= r * r
+    return mask
+
+
 def build_zone_map(
     canon: np.ndarray, canvas: CanvasSpec, mirrored: bool, params: ZoneParams = ZoneParams()
 ) -> np.ndarray:
@@ -91,6 +134,7 @@ def build_zone_map(
         (spec.LEFT_EYEBROW, params.brow_margin),
         (spec.RIGHT_EYEBROW, params.brow_margin),
         (spec.LIPS, params.lip_margin),
+        (spec.NOSTRILS, params.nostril_margin),
     ):
         skin &= ~_hull_mask((h, w), sel(idx), margin * ppu)
 
@@ -124,7 +168,7 @@ def build_zone_map(
         (forehead, FaceZone.FOREHEAD),
     ):
         zone[mask] = ZONE_IDS[z]
-    zone[~skin] = 0
+    zone[~skin | shading_mask(canvas, canon, params)] = 0
     return zone
 
 

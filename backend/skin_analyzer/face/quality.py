@@ -21,7 +21,7 @@ class QualityParams:
     min_skin_coverage: float = 0.6
     min_zone_pixels: int = 150
     nose_yaw_scale: float = 0.45
-    frontal_nose_v: float = 0.60
+    frontal_nose_v: float = 0.54  # measured on real frontal webcam frames (synthetic guess was 0.60)
     nose_pitch_scale: float = 0.9
 
     def __post_init__(self) -> None:

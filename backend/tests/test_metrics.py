@@ -58,7 +58,11 @@ def test_texture_and_pigmentation() -> None:
     patched = compute_metrics(lab, zones, glare, 160)
     assert baseline is not None and noisy is not None and patched is not None
     assert noisy.overall.texture > baseline.overall.texture + 20
-    assert patched.overall.pigmentation > noisy.overall.pigmentation + 20
+    # The patch lies in the left cheek: that zone rises clearly, the other cheek does not.
+    left, right = FaceZone.LEFT_CHEEK, FaceZone.RIGHT_CHEEK
+    assert patched.zones[left].pigmentation > noisy.zones[left].pigmentation + 30
+    assert patched.zones[right].pigmentation == pytest.approx(noisy.zones[right].pigmentation, abs=2)
+    assert patched.overall.pigmentation > noisy.overall.pigmentation + 10
 
 
 def test_mask_normalization_and_minimum_counts() -> None:

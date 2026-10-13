@@ -19,9 +19,12 @@ class MetricsParams:
     redness_fraction_range: tuple[float, float] = (0.0, 0.15)
     redness_delta: float = 6.0
     redness_median_weight: float = 0.6
-    texture_range: tuple[float, float] = (0.6, 3.5)
+    # Ranges calibrated on real 1280x720 webcam frames in even frontal light: per-zone
+    # high-pass L* std 0.38-0.48 (cheeks/nose/chin), ~1.2 (forehead); band-pass std
+    # 1.3-3.6. Normal skin therefore scores low-to-moderate, leaving headroom.
+    texture_range: tuple[float, float] = (0.35, 2.0)
     oiliness_range: tuple[float, float] = (0.0, 0.06)
-    pigmentation_range: tuple[float, float] = (0.8, 4.0)
+    pigmentation_range: tuple[float, float] = (2.0, 8.0)
     texture_sigma: float = 0.02
     pigmentation_small_sigma: float = 0.03
     pigmentation_large_sigma: float = 0.25
