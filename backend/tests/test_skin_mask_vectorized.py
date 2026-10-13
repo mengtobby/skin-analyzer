@@ -41,9 +41,22 @@ def _scene(seed: int, red_fraction: float, shape=(416, 320)):
     return accepted, candidates, skin
 
 
+def _assert_multi_component_ring(candidates: np.ndarray, skin: np.ndarray) -> None:
+    _, labels = cv2.connectedComponents(candidates.astype(np.uint8), connectivity=8)
+    padded = np.pad(labels, 1)
+    h, w = labels.shape
+    neighbours = np.stack([padded[y:y + h, x:x + w]
+                           for y in range(3) for x in range(3) if (y, x) != (1, 1)])
+    maximum = neighbours.max(axis=0)
+    minimum = np.where(neighbours > 0, neighbours, labels.max() + 1).min(axis=0)
+    assert np.any((labels == 0) & skin & (minimum < maximum))
+
+
 @pytest.mark.parametrize("seed,fraction", [(0, 0.0), (1, 0.005), (2, 0.02), (3, 0.05), (4, 0.10)])
 def test_matches_reference(seed, fraction):
     accepted, candidates, skin = _scene(seed, fraction)
+    if fraction > 0:
+        _assert_multi_component_ring(candidates, skin)
     np.testing.assert_array_equal(
         _enclosed_red_skin(accepted, candidates, skin), _reference(accepted, candidates, skin))
 
@@ -60,9 +73,12 @@ def test_edge_touching_components_count_canvas_border_as_rejected():
 def test_heavy_speckle_is_fast():
     accepted, candidates, skin = _scene(4, 0.10)
     _enclosed_red_skin(accepted, candidates, skin)
-    timings = []
+    timings, reference_timings = [], []
     for _ in range(5):
         start = perf_counter()
         _enclosed_red_skin(accepted, candidates, skin)
         timings.append(perf_counter() - start)
-    assert min(timings) < 0.015  # reference loop: ~120 ms on this input
+        start = perf_counter()
+        _reference(accepted, candidates, skin)
+        reference_timings.append(perf_counter() - start)
+    assert min(timings) < min(reference_timings) / 3
