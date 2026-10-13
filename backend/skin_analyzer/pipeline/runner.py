@@ -232,8 +232,11 @@ class PipelineRunner:
             if result.quality is not None and not result.quality.ok:
                 accepted = self.analyzer.last_good()
                 if accepted is None:
-                    return
-                tracks, metrics = accepted
+                    if self._report is None:
+                        return
+                    tracks, metrics = [], None
+                else:
+                    tracks, metrics = accepted
                 face_detected = True
             report = report_to_dict(generate_report(tracks, metrics, self.kb,
                                                     now=time.time(), face_detected=face_detected))
