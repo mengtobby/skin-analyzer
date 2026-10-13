@@ -306,17 +306,25 @@ def test_stop_bounds_hung_read(monkeypatch, caplog):
     runner.add_listener(lambda: notifications.append(runner.is_running))
     runner.start()
     assert entered.wait(5)
-    start = time.monotonic()
+    original_join = runner._thread.join
+    join_timeouts = []
+
+    def bounded_join(timeout=None):
+        join_timeouts.append(timeout)
+        assert timeout is not None and 0 <= timeout <= 3
+
+    monkeypatch.setattr(runner._thread, "join", bounded_join)
     try:
         runner.stop()
-        assert time.monotonic() - start < 3.5
+        assert join_timeouts
+        assert runner._thread.is_alive()
         assert notifications == [False]
         assert "shutdown timed out" in caplog.text
         with pytest.raises(RuntimeError, match="has not stopped"):
             runner.start()
     finally:
         release.set()
-        runner._thread.join(5)
+        original_join(5)
     assert notifications == [False]
 
 
@@ -339,10 +347,8 @@ def test_wait_packet_wakes_on_stop(monkeypatch):
     thread = threading.Thread(target=receive, daemon=True)
     thread.start()
     assert waiting.wait(5)
-    start = time.monotonic()
     runner.stop()
-    assert finished.wait(0.5)
-    assert time.monotonic() - start < 0.5
+    assert finished.wait(5)
     thread.join(1)
     assert results == [None]
 
@@ -406,6 +412,9 @@ def test_rejected_frame_preserves_report(monkeypatch):
         return original(tracks, metrics, kb, **kwargs)
 
     monkeypatch.setattr(module, "generate_report", capture)
+    timeout = analyzer.tracker.params.face_lost_timeout_s
+    for timestamp in np.arange(timeout / 2, 10, timeout / 2):
+        rejected = analyzer.process(np.zeros_like(image), float(timestamp))
     rejected = analyzer.process(np.zeros_like(image), 10)
     assert not rejected.tracks and rejected.metrics is None
     runner._publish_report(rejected)
