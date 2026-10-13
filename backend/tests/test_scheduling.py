@@ -146,6 +146,7 @@ def test_face_loss_past_timeout_invalidates_last_good(monkeypatch):
     assert analyzer.last_good() is not None  # brief dropout keeps the last good analysis
     analyzer.process(image, 0.2 + timeout)
     assert analyzer.last_good() is None  # a returning (possibly different) face starts fresh
+    assert analyzer._metrics is None and analyzer.smoother._last is None
     analyzer.landmarker.landmarks = landmarks
     dark = analyzer.process(np.zeros_like(image), 0.3 + timeout)
     assert not dark.quality.ok and analyzer.last_good() is None
@@ -164,3 +165,46 @@ def test_face_return_resets_loss_clock(monkeypatch):
         analyzer.landmarker.landmarks = landmarks
         analyzer.process(np.zeros_like(image), start + timeout * 0.7)
     assert analyzer.last_good() is not None
+
+
+@pytest.mark.parametrize("gap_factor", [0.5, 1.1])
+def test_face_stream_gap_invalidates_analysis_and_smoothing(monkeypatch, gap_factor):
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    analyzer.analysis_every = 1
+    accepted = analyzer.process(image, 0)
+    assert accepted.metrics is not None
+    smoother_state = analyzer.smoother._last
+    timeout = analyzer.tracker.params.face_lost_timeout_s
+    rejected = analyzer.process(np.zeros_like(image), timeout * gap_factor)
+    assert not rejected.quality.ok and rejected.metrics is None
+    if gap_factor > 1:
+        assert analyzer.last_good() is None
+        assert analyzer._last_ok_timestamp is None
+        assert analyzer._metrics is None
+        assert analyzer.smoother._last is None
+    else:
+        assert analyzer.last_good() == (accepted.tracks, accepted.metrics)
+        assert analyzer._metrics is accepted.metrics
+        assert analyzer.smoother._last is smoother_state
+
+
+def test_face_stream_gap_clears_tracks_and_quality_before_projection(monkeypatch):
+    analyzer, image, _ = seeded_analyzer(monkeypatch)
+    analyzer.analysis_every = 2
+    accepted = analyzer.process(image, 0)
+    assert accepted.tracks and accepted.quality.ok
+    monkeypatch.setattr(analyzer.detector, "detect", lambda _: [])
+    gap = analyzer.tracker.params.face_lost_timeout_s + 1
+    projected = analyzer.process(image, gap)
+    assert not projected.analyzed
+    assert projected.tracks == []
+    assert projected.quality is None and projected.metrics is None
+    assert analyzer.last_good() is None
+    assert analyzer._gains is None
+    assert analyzer.smoother._last is None
+    header = build_frame_header(projected, 1, gap, image.shape[1], image.shape[0])
+    assert header["tracks"] == []
+    analyzed = analyzer.process(image, gap + 1 / 30)
+    assert analyzed.analyzed and analyzed.quality.ok
+    assert analyzed.tracks == []
+    assert analyzer.last_good() == ([], analyzed.metrics)

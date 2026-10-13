@@ -8,6 +8,25 @@ from skin_analyzer.face import landmark_spec as spec
 from skin_analyzer.face.geometry import ZoneParams, build_face_region, shading_mask
 from tests.synthetic_face import canonical_landmarks, place
 
+def _reference_shading_mask(
+    canvas: CanvasSpec, canon: np.ndarray, params: ZoneParams = ZoneParams()
+) -> np.ndarray:
+    """Evaluate the anatomical criteria independently at every pixel centre."""
+    w, h = canvas.size
+    u, v = np.meshgrid(
+        (np.arange(w) + 0.5) / canvas.px_per_unit + canvas.u_range[0],
+        (np.arange(h) + 0.5) / canvas.px_per_unit + canvas.v_range[0])
+    nose_u = canon[list(spec.NOSE), 0]
+    centre = canon[spec.NOSE_TIP, 0]
+    half = max(params.min_nose_half_width, (nose_u.max() - nose_u.min()) / 2)
+    root = canon[[spec.LEFT_EYE_INNER, spec.RIGHT_EYE_INNER]].mean(axis=0)
+    vertical = (v >= root[1] + 0.05) & (v <= canon[list(spec.NOSE), 1].max())
+    left = (u >= centre - half - params.sidewall_outer) & (u <= centre - half + params.sidewall_inner)
+    right = (u >= centre + half - params.sidewall_inner) & (u <= centre + half + params.sidewall_outer)
+    disk = (u - root[0]) ** 2 + (v - root[1]) ** 2 <= params.nasal_root_radius ** 2
+    return (vertical & (left | right)) | disk
+
+
 def _old_hull_mask(shape: tuple[int, int], pts: np.ndarray, grow_px: float) -> np.ndarray:
     mask = np.zeros(shape, np.uint8)
     hull = cv2.convexHull(np.round(pts).astype(np.int32))
@@ -73,7 +92,7 @@ def _old_zone_map(
         (forehead, FaceZone.FOREHEAD),
     ):
         zone = np.where(mask, ZONE_IDS[z], zone).astype(np.uint8)
-    skin &= ~shading_mask(canvas, canon, params)
+    skin &= ~_reference_shading_mask(canvas, canon, params)
     return np.where(skin, zone, 0).astype(np.uint8)
 
 
@@ -86,13 +105,26 @@ def test_zone_map_matches_previous_algorithm(scale, angle, mirrored):
     assert (region.zone_map == expected).mean() >= 0.99
 
 
+@pytest.mark.parametrize("scale,angle", [(90, -25), (160, 0), (260, 30)])
+@pytest.mark.parametrize("ppu", [80, 160, 240])
+def test_shading_matches_per_pixel_reference(scale, angle, ppu):
+    landmarks = place(canonical_landmarks(), scale, angle, (640, 300))
+    region = build_face_region(landmarks, canvas=CanvasSpec(px_per_unit=ppu))
+    canon = region.frame.to_canonical(landmarks)
+    np.testing.assert_array_equal(shading_mask(region.canvas, canon),
+                                  _reference_shading_mask(region.canvas, canon))
+
+
 def test_build_face_region_timing():
     landmarks = place(canonical_landmarks(), 200, 15, (640, 300))
-    build_face_region(landmarks)
-    timings = []
-    for _ in range(20):
+    region = build_face_region(landmarks)
+    canon = region.frame.to_canonical(landmarks)
+    fast, reference = [], []
+    for _ in range(10):
         start = perf_counter()
-        for _ in range(10):
-            build_face_region(landmarks)
-        timings.append((perf_counter() - start) / 10)
-    assert min(timings) < 0.003
+        build_face_region(landmarks)
+        fast.append(perf_counter() - start)
+        start = perf_counter()
+        _old_zone_map(canon, region.canvas, True)
+        reference.append(perf_counter() - start)
+    assert min(fast) < min(reference) / 2

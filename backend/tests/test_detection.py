@@ -146,8 +146,86 @@ def test_detects_soft_low_contrast_pigment_spot():
     lab = inp.canvas_lab.copy()
     lab[..., 0] -= 9.0 * g
     lab[..., 2] += 2.7 * g
-    params = ClassicalParams(dark_k=4.0, dark_floor=7.0, pigment_diam_units=(0.03, 0.20))
+    params = ClassicalParams()
     dets = ClassicalDetector(params).detect(dc_replace(inp, canvas_lab=lab))
     spot = inp.region.canvas_to_image(np.array([[cx, cy]]))[0]
     hits = [d for d in _near(dets, spot) if d.label is DetectionClass.HYPERPIGMENTATION]
     assert hits, dets
+
+
+def _spot_context(strength):
+    from skin_analyzer.detection.classical import _Ctx
+
+    inp = _input(render_face(LANDMARKS, seed=7))
+    zeros = np.zeros_like(strength)
+    return _Ctx(inp, inp.region.canvas.px_per_unit, inp.zone_map > 0,
+                -strength, strength, zeros, 1.0, 1.0)
+
+
+def test_bridged_red_lesions_use_each_peaks_half_maximum():
+    inp = _input(render_face(LANDMARKS, seed=7))
+    shape = inp.canvas_lab.shape[:2]
+    cx, cy = inp.region.image_to_canvas_pts(np.array([_img_pt(-0.45, 0.5)]))[0].astype(int)
+    strength = np.zeros(shape, np.float32)
+    strength[cy - 2:cy + 3, cx - 12:cx + 13] = 3.0
+    strength[cy - 3:cy + 4, cx - 12:cx - 5] = 11.0
+    strength[cy - 1:cy + 2, cx - 10:cx - 7] = 24.0
+    strength[cy - 3:cy + 4, cx + 6:cx + 13] = 6.0
+    strength[cy - 1:cy + 2, cx + 8:cx + 11] = 10.0
+    dets = ClassicalDetector()._inflammatory(_spot_context(strength))
+    assert len(dets) == 2
+    by_peak = sorted(dets, key=lambda d: d.features["peak_delta_a"])
+    assert by_peak[0].features["peak_delta_a"] == 10.0
+    assert by_peak[1].features["peak_delta_a"] == 24.0
+    assert by_peak[0].area_px > by_peak[1].area_px
+
+
+def test_diffuse_red_area_with_tiny_peak_is_not_a_spot():
+    inp = _input(render_face(LANDMARKS, seed=7))
+    yy, xx = np.indices(inp.canvas_lab.shape[:2])
+    cx, cy = inp.region.image_to_canvas_pts(np.array([_img_pt(-0.45, 0.5)]))[0]
+    strength = np.zeros(xx.shape, np.float32)
+    strength[(xx - cx) ** 2 + (yy - cy) ** 2 < (0.2 * inp.region.canvas.px_per_unit) ** 2] = 5.9
+    strength[(xx - cx) ** 2 + (yy - cy) ** 2 < 3 ** 2] = 12.0
+    assert ClassicalDetector()._inflammatory(_spot_context(strength)) == []
+
+
+@pytest.mark.parametrize("dark", [False, True])
+def test_morphology_split_fragment_requires_its_own_seed(dark):
+    inp = _input(render_face(LANDMARKS, seed=7))
+    cx, cy = inp.region.image_to_canvas_pts(np.array([_img_pt(-0.45, 0.5)]))[0].astype(int)
+    strength = np.zeros(inp.canvas_lab.shape[:2], np.float32)
+    strength[cy - 3:cy + 4, cx - 14:cx - 7] = 10.0
+    strength[cy, cx - 7:cx + 7] = 4.0  # opening removes this narrow bridge
+    strength[cy - 4:cy + 5, cx + 7:cx + 16] = 4.0
+    ctx = _spot_context(strength)
+    detector = ClassicalDetector()
+    if dark:
+        from dataclasses import replace
+
+        ctx = replace(ctx, da=np.zeros_like(strength))
+        dets = detector._pigmentation(ctx)
+        assert all(-d.features["delta_l"] > detector.p.dark_floor for d in dets)
+    else:
+        dets = detector._inflammatory(ctx)
+        assert all(d.features["peak_delta_a"] > detector.p.red_floor for d in dets)
+    assert len(dets) == 1
+
+
+def test_half_max_components_measure_weaker_piece_at_its_own_peak():
+    strength = np.zeros((20, 40), np.float32)
+    strength[8:11, 5:31] = 3.0
+    strength[6:13, 5:12] = 11.0
+    strength[8:11, 7:10] = 24.0
+    strength[6:13, 24:31] = 6.0
+    strength[8:11, 26:29] = 10.0
+    pieces = list(ClassicalDetector()._half_max_components(
+        strength > 2.5, strength, 2.5, 5.0, (0.02, 0.10), 160.0
+    ))
+    assert len(pieces) == 2
+    assert sorted(int(comp.sum()) for comp, _, _, _ in pieces) == [9, 49]
+    for comp, sl, _, diameter in pieces:
+        peak = strength[sl][comp].max()
+        assert peak > 5.0
+        assert (strength[sl][comp] >= peak / 2).all()
+        assert diameter == pytest.approx(2 * np.sqrt(comp.sum() / np.pi) / 160)

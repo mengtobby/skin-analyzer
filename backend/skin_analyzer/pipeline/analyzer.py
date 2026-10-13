@@ -45,6 +45,7 @@ class FrameAnalyzer:
         self._last_ok_timestamp: float | None = None
         self._last_good: tuple[list[Track], SkinMetrics | None] | None = None
         self._face_lost_since: float | None = None
+        self._last_face_seen: float | None = None
 
     def reset(self) -> None:
         self.tracker.reset()
@@ -57,6 +58,18 @@ class FrameAnalyzer:
         self._last_ok_timestamp = None
         self._last_good = None
         self._face_lost_since = None
+        self._last_face_seen = None
+
+    def _invalidate_analysis(self) -> None:
+        """Discard temporal state that could belong to a previous face."""
+        self.tracker.reset()
+        self._quality = None
+        self._gains = None
+        self._filter.reset()
+        self._last_good = None
+        self._last_ok_timestamp = None
+        self._metrics = None
+        self.smoother.reset()
 
     def _note_face_lost(self, timestamp: float) -> None:
         """Forget the last good analysis once the face has been gone past the timeout.
@@ -67,8 +80,7 @@ class FrameAnalyzer:
         if self._face_lost_since is None:
             self._face_lost_since = timestamp
         elif timestamp - self._face_lost_since > self.tracker.params.face_lost_timeout_s:
-            self._last_good = None
-            self._last_ok_timestamp = None
+            self._invalidate_analysis()
 
     def last_good(self) -> tuple[list[Track], SkinMetrics | None] | None:
         """Return the latest accepted analysis with an independent track list."""
@@ -98,10 +110,14 @@ class FrameAnalyzer:
             stages["track"] = (perf_counter() - start) * 1000
             self.smoother.update(None)
             return FrameResult(None, tracks, None, stages)
-        self._face_lost_since = None
         landmarks = np.asarray(landmarks)
         if landmarks.ndim != 2 or landmarks.shape[1] != 2 or landmarks.shape[0] < 468 or not np.isfinite(landmarks).all():
             raise ValueError("expected finite face landmarks with shape (N, 2), N >= 468")
+        if (self._last_face_seen is not None and
+                timestamp - self._last_face_seen > self.tracker.params.face_lost_timeout_s):
+            self._invalidate_analysis()
+        self._last_face_seen = timestamp
+        self._face_lost_since = None
         scale = face.face_frame_from_landmarks(landmarks).scale
         region = face.build_face_region(self._filter(landmarks, timestamp, scale),
                                         self.canvas, self.mirrored)
