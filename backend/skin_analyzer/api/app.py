@@ -60,7 +60,7 @@ def _trusted_settings(settings: Settings) -> tuple[set[str], set[str]]:
                f"http://localhost:{settings.port}", f"http://127.0.0.1:{settings.port}",
                f"http://[::1]:{settings.port}", *settings.extra_origins}
     hosts = {"localhost", "127.0.0.1", "::1"}
-    if settings.host not in {"0.0.0.0", "::"}:
+    if settings.host not in {"0.0.0.0", "::"}:  # nosec B104 - wildcard detection, not a bind
         host = settings.host.strip("[]").lower()  # browsers send lowercase origins
         hosts.add(host)
         authority = f"[{host}]" if ":" in host else host

@@ -11,3 +11,6 @@ backend/models/*.onnx
 backend/models/*.engine
 *.log
 .DS_Store
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/

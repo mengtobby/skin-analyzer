@@ -36,7 +36,8 @@ def ensure_models(models_dir: Path) -> Path:
         models_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(dir=models_dir, suffix=".tmp", delete=False) as output:
             temporary = Path(output.name)
-            with urllib.request.urlopen(MODEL_URL, timeout=60) as response:
+            # Constant https URL; the payload is size-capped and SHA-256 verified below.
+            with urllib.request.urlopen(MODEL_URL, timeout=60) as response:  # nosec B310
                 while chunk := response.read(1024 * 1024):
                     if output.tell() + len(chunk) > MAX_MODEL_BYTES:
                         raise RuntimeError("Downloaded model exceeds 20 MB size limit")

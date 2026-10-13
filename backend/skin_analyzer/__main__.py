@@ -7,7 +7,7 @@ import logging
 import os
 from pathlib import Path
 import shutil
-import subprocess
+import subprocess  # nosec B404 - only launches the local Edge binary (list args, no shell)
 import threading
 import time
 import urllib.request
@@ -42,7 +42,9 @@ def _open_browser(url: str) -> None:
                 break
     try:
         if edge:
-            subprocess.Popen([edge, f"--app={url}"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            # nosec B603: fixed Edge path found on disk + our own loopback URL; no shell
+            subprocess.Popen([edge, f"--app={url}"],  # nosec B603
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         else:
             webbrowser.open(url)
     except OSError:
@@ -77,7 +79,8 @@ def main() -> None:
     if settings.landmarker_model == Settings().landmarker_model:
         ensure_models(settings.landmarker_model.parent)
     if args.open_browser:
-        host = "127.0.0.1" if settings.host in {"0.0.0.0", "::"} else settings.host
+        # Detects a wildcard bind to open a loopback URL instead; does not bind to it.
+        host = "127.0.0.1" if settings.host in {"0.0.0.0", "::"} else settings.host  # nosec B104
         threading.Thread(target=_open_browser, args=(f"http://{host}:{settings.port}",), daemon=True).start()
     uvicorn.run(create_app(settings), host=settings.host, port=settings.port)
 
