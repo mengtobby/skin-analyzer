@@ -120,6 +120,18 @@ def test_restored_red_at_forehead_upper_boundary_does_not_trigger_margin():
     np.testing.assert_array_equal(refine_zone_map(zones, lab), zones)
 
 
+@pytest.mark.parametrize("colour", [(95, 15, 18), (65, 15, 40)])
+def test_non_hair_rejections_at_forehead_upper_boundary_do_not_trigger_margin(colour):
+    # Shine (too bright) and a b* shift are rejected but are not hair.
+    zones = np.full((40, 40), ZONE_IDS[FaceZone.FOREHEAD], np.uint8)
+    zones[:5] = 0
+    lab = np.full((*zones.shape, 3), (65, 15, 18), np.float32)
+    lab[5:8, 10:30] = colour
+    expected = zones.copy()
+    expected[5:8, 10:30] = 0
+    np.testing.assert_array_equal(refine_zone_map(zones, lab), expected)
+
+
 def test_diagonal_hair_connection_and_euclidean_margin():
     zones = np.full((40, 40), ZONE_IDS[FaceZone.FOREHEAD], np.uint8)
     lab = np.full((*zones.shape, 3), (65, 15, 18), np.float32)

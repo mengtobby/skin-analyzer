@@ -252,6 +252,28 @@ def test_network_credentials_redacted(caplog: pytest.LogCaptureFixture) -> None:
     assert "secret" not in caplog.text
 
 
+def test_network_query_credentials_redacted(caplog: pytest.LogCaptureFixture) -> None:
+    url = "http://host:8080/video?token=secret&pwd=hunter2"
+
+    def factory(*args: object) -> FakeCapture:
+        raise RuntimeError(f"Failed {url}; token=secret pwd=hunter2")
+
+    source = NetworkStreamSource(url, capture_factory=factory)
+    assert source.info().spec == "url:http://host:8080/video?***"
+    source.start()
+    try:
+        deadline = time.monotonic() + 1
+        while source.info().error is None and time.monotonic() < deadline:
+            source.read(0.01)
+        error = source.info().error
+        assert error is not None
+        assert "secret" not in error and "hunter2" not in error
+        assert source._thread is not None and "secret" not in source._thread.name
+    finally:
+        source.close()
+    assert "secret" not in caplog.text and "hunter2" not in caplog.text
+
+
 @pytest.mark.parametrize("opened,frames", [(False, 1000), (True, 0)])
 def test_network_requires_open_and_initial_frame(opened: bool, frames: int) -> None:
     capture = FakeCapture(opened=opened, frames=frames)

@@ -194,21 +194,29 @@ class NetworkStreamSource(_ThreadedSource):
         except (ValueError, TypeError, AttributeError):
             raise ValueError("Invalid network stream URL") from None
         self._url = url
-        self._password = password
         safe_url = url
         if password is not None:
             userinfo, host = parsed.netloc.rsplit("@", 1)
             safe_netloc = userinfo.split(":", 1)[0] + ":***@" + host
-            safe_url = url.replace(parsed.netloc, safe_netloc, 1)
+            safe_url = safe_url.replace(parsed.netloc, safe_netloc, 1)
+        # Phone camera apps often pass tokens or passwords as query parameters.
+        if parsed.query:
+            safe_url = safe_url.replace("?" + parsed.query, "?***", 1)
         self._safe_url = safe_url
+        self._secrets = self._secret_values(password, parsed.query)
         super().__init__(f"url:{safe_url}", width, height, fps, mirror, capture_factory)
+
+    @staticmethod
+    def _secret_values(password: str | None, query: str) -> tuple[str, ...]:
+        """Password and query values (raw and decoded), longest first so none leaks partially."""
+        raw = [password or ""] + [part.partition("=")[2] or part for part in query.split("&")]
+        values = {v for item in raw for v in (item, unquote(item)) if v}
+        return tuple(sorted(values, key=len, reverse=True))
 
     def _error_text(self, exc: Exception) -> str:
         error = super()._error_text(exc).replace(self._url, self._safe_url)
-        if self._password:
-            for password in (self._password, unquote(self._password)):
-                if password:
-                    error = error.replace(password, "***")
+        for secret in self._secrets:
+            error = error.replace(secret, "***")
         return error
 
     def _stream(self) -> None:

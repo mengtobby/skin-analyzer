@@ -98,7 +98,7 @@ Install an IP-camera app on your phone and keep the phone and laptop on the same
 .\start.ps1 -Source url:http://<phone-ip>:<port>/video
 ```
 
-The exact stream path depends on the app. The HTTP stream is unencrypted over the local network, so use it only on trusted Wi-Fi. Apps exposing the phone as a virtual webcam work as `camera:<index>` instead.
+The exact stream path depends on the app. The HTTP stream is unencrypted over the local network, so use it only on trusted Wi-Fi. A password in the URL (`user:password@` or query parameters such as `?token=`) is shown as `***` in logs and on `/api/health`. Apps exposing the phone as a virtual webcam work as `camera:<index>` instead.
 
 ## Optional: learned lesion model
 

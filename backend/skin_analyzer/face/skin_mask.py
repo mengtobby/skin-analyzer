@@ -78,9 +78,13 @@ def _enclosed_red_skin(
     return restored[labels]
 
 
-def _hair_margin(forehead: np.ndarray, ok: np.ndarray, radius: int) -> np.ndarray:
-    """Euclidean margin around rejected components touching the forehead's top edge."""
-    rejected = forehead & ~ok
+def _hair_margin(forehead: np.ndarray, hair: np.ndarray, radius: int) -> np.ndarray:
+    """Euclidean margin around hair components touching the forehead's top edge.
+
+    ``hair`` holds only dark or low-chroma rejections, so shine, b* shifts and red
+    patches at the hairline never widen the excluded band.
+    """
+    rejected = forehead & hair
     if not rejected.any():
         return np.zeros(forehead.shape, bool)
     _, labels = cv2.connectedComponents(rejected.astype(np.uint8), connectivity=8)
@@ -110,7 +114,8 @@ def refine_zone_map(
     zone pixels. This adapts to skin tone without letting a large hair fringe
     dominate the reference. Low-chroma pixels are rejected relative to that skin.
     Red components mostly bordered by accepted skin are retained as possible lesions.
-    Rejected hair touching the forehead's upper boundary gets a surrounding margin.
+    Dark or low-chroma (hair) rejections touching the forehead's upper boundary
+    get a surrounding margin.
     """
     if isinstance(hair_margin_px, bool) or not isinstance(hair_margin_px, int) or hair_margin_px < 0:
         raise ValueError("Hair margin must be a non-negative integer")
@@ -129,16 +134,14 @@ def refine_zone_map(
     # White balancing can make the skin reference effectively achromatic. In
     # that case a relative chroma cutoff separates numerical noise, not hair.
     ref_chroma = np.hypot(ref[1], ref[2])
-    colour_ok = (
-        (d[..., 0] > -max_dark)
-        & (d[..., 0] < max_bright)
-        & (np.abs(d[..., 2]) < max_db)
-        & ((ref_chroma < 1.0) | (np.hypot(lab[..., 1], lab[..., 2]) >= 0.35 * ref_chroma))
-    )
+    dark = d[..., 0] <= -max_dark
+    low_chroma = (ref_chroma >= 1.0) & (np.hypot(lab[..., 1], lab[..., 2]) < 0.35 * ref_chroma)
+    colour_ok = ~dark & (d[..., 0] < max_bright) & (np.abs(d[..., 2]) < max_db) & ~low_chroma
     ok = skin & colour_ok & (np.abs(d[..., 1]) < max_da)
     red = skin & colour_ok & (d[..., 1] >= max_da)
     if red.any():
         ok |= _enclosed_red_skin(ok, red, skin)
     if hair_margin_px > 0:
-        ok &= ~_hair_margin(zone_map == ZONE_IDS[FaceZone.FOREHEAD], ok, hair_margin_px)
+        hair = skin & ~ok & (dark | low_chroma)
+        ok &= ~_hair_margin(zone_map == ZONE_IDS[FaceZone.FOREHEAD], hair, hair_margin_px)
     return np.where(ok, zone_map, 0).astype(zone_map.dtype)
