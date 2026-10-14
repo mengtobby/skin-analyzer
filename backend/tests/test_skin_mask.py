@@ -73,7 +73,7 @@ def test_fallback_reference_and_empty_map():
     lab = np.full((10, 10, 3), (65, 15, 18), np.float32)
     lab[0] = (12, 1, 2)
     refined = refine_zone_map(zones, lab)
-    assert not refined[0].any() and refined[1:].all()
+    assert not refined[:9].any() and refined[9:].all()
     zones[:] = 0
     np.testing.assert_array_equal(refine_zone_map(zones, lab), zones)
 
@@ -81,6 +81,60 @@ def test_fallback_reference_and_empty_map():
 def test_invalid_canvas():
     with pytest.raises(ValueError):
         refine_zone_map(np.ones((10, 10)), np.ones((9, 10, 3)))
+
+
+@pytest.mark.parametrize("margin", [0, 3, 8])
+def test_forehead_hair_margin_has_exact_depth_and_preserves_other_zones(margin):
+    zones = np.full((50, 60), ZONE_IDS[FaceZone.FOREHEAD], np.uint8)
+    zones[:4] = 0
+    for column, zone in enumerate((FaceZone.LEFT_CHEEK, FaceZone.NOSE, FaceZone.CHIN)):
+        zones[:, column * 10:(column + 1) * 10] = ZONE_IDS[zone]
+    lab = np.full((*zones.shape, 3), (65, 15, 18), np.float32)
+    lab[4:7, 30:] = (12, 1, 2)
+    original_zones, original_lab = zones.copy(), lab.copy()
+    refined = refine_zone_map(zones, lab, hair_margin_px=margin)
+    assert not refined[4:7 + margin, 30:].any()
+    np.testing.assert_array_equal(refined[7 + margin:, 30:], zones[7 + margin:, 30:])
+    np.testing.assert_array_equal(refined[:, :30], zones[:, :30])
+    expected = zones.copy()
+    expected[4:7, 30:] = 0
+    np.testing.assert_array_equal(refine_zone_map(zones, lab, hair_margin_px=0), expected)
+    np.testing.assert_array_equal(zones, original_zones)
+    np.testing.assert_array_equal(lab, original_lab)
+
+
+def test_isolated_forehead_dark_spot_does_not_expand():
+    zones = np.full((50, 50), ZONE_IDS[FaceZone.FOREHEAD], np.uint8)
+    lab = np.full((*zones.shape, 3), (65, 15, 18), np.float32)
+    lab[20:23, 20:23] = (12, 1, 2)
+    expected = zones.copy()
+    expected[20:23, 20:23] = 0
+    np.testing.assert_array_equal(refine_zone_map(zones, lab), expected)
+
+
+def test_restored_red_at_forehead_upper_boundary_does_not_trigger_margin():
+    zones = np.full((40, 40), ZONE_IDS[FaceZone.FOREHEAD], np.uint8)
+    zones[:5] = 0
+    lab = np.full((*zones.shape, 3), (65, 15, 18), np.float32)
+    lab[5:8, 15:18] = (55, 42, 23)
+    np.testing.assert_array_equal(refine_zone_map(zones, lab), zones)
+
+
+def test_diagonal_hair_connection_and_euclidean_margin():
+    zones = np.full((40, 40), ZONE_IDS[FaceZone.FOREHEAD], np.uint8)
+    lab = np.full((*zones.shape, 3), (65, 15, 18), np.float32)
+    indices = np.arange(5)
+    lab[indices, indices + 10] = (12, 1, 2)
+    refined = refine_zone_map(zones, lab, hair_margin_px=3)
+    assert refined[7, 14] == 0
+    assert refined[7, 17] != 0  # diagonal distance sqrt(18) exceeds three
+    assert refined[8, 14] != 0
+
+
+@pytest.mark.parametrize("margin", [-1, 1.5, "8", None, True])
+def test_invalid_hair_margin(margin):
+    with pytest.raises(ValueError, match="Hair margin"):
+        refine_zone_map(np.zeros((5, 5), np.uint8), np.zeros((5, 5, 3)), hair_margin_px=margin)
 
 
 @pytest.mark.parametrize("colour", [
