@@ -8,7 +8,8 @@ import cv2
 import numpy as np
 import pytest
 
-from skin_analyzer.capture import CameraSource, VideoFileSource, create_source
+from skin_analyzer.capture import (CameraSource, NetworkStreamSource,
+                                   VideoFileSource, create_source)
 
 
 class FakeCapture:
@@ -180,3 +181,142 @@ def test_close_wakes_reader() -> None:
 def test_invalid_timeout(timeout: float) -> None:
     with pytest.raises(ValueError):
         CameraSource().read(timeout)
+
+
+@pytest.mark.parametrize("url", ["ftp://x", "http://", "file:///c", "",
+                                  "http://user:secret@host/a b",
+                                  "http://user:secret@[broken"])
+def test_invalid_network_url(url: str) -> None:
+    with pytest.raises(ValueError) as error:
+        create_source(f"url:{url}")
+    assert "secret" not in str(error.value)
+
+
+@pytest.mark.parametrize("scheme", ["http", "HTTPS", "RTSP"])
+def test_network_parsing(scheme: str) -> None:
+    spec = f"url:{scheme}://10.0.0.5:8080/video"
+    source = create_source(spec)
+    assert isinstance(source, NetworkStreamSource)
+    assert source.info().spec == spec
+
+
+def test_network_frames_and_reconnect() -> None:
+    captures: list[FakeCapture] = []
+    calls: list[tuple[object, ...]] = []
+
+    def factory(*args: object) -> FakeCapture:
+        calls.append(args)
+        capture = FakeCapture(frames=1 if not captures else 1000)
+        captures.append(capture)
+        return capture
+
+    url = "http://10.0.0.5:8080/video"
+    source = NetworkStreamSource(url, fps=24, capture_factory=factory)
+    source.start()
+    try:
+        first = source.read()
+        assert first is not None
+        assert np.all(first[0][:, -1] == 255)
+        assert (source.info().width, source.info().height, source.info().fps) == (12, 8, 24)
+        deadline = time.monotonic() + 1
+        while source.info().opened and time.monotonic() < deadline:
+            source.read(0.01)
+        assert "repeatedly" in (source.info().error or "")
+        assert captures[0].released
+        assert source.read(3) is not None
+        assert len(captures) == 2
+        assert calls == [(url, cv2.CAP_FFMPEG)] * 2
+        assert captures[0].settings == {cv2.CAP_PROP_BUFFERSIZE: 1}
+    finally:
+        source.close()
+
+
+def test_network_credentials_redacted(caplog: pytest.LogCaptureFixture) -> None:
+    url = "http://user:secret@host/video"
+
+    def factory(*args: object) -> FakeCapture:
+        raise RuntimeError(f"Failed {url}; password secret")
+
+    source = NetworkStreamSource(url, capture_factory=factory)
+    assert source.info().spec == "url:http://user:***@host/video"
+    source.start()
+    try:
+        deadline = time.monotonic() + 1
+        while source.info().error is None and time.monotonic() < deadline:
+            source.read(0.01)
+        assert source.info().error is not None
+        assert "secret" not in source.info().error
+        assert source._thread is not None and "secret" not in source._thread.name
+    finally:
+        source.close()
+    assert "secret" not in caplog.text
+
+
+@pytest.mark.parametrize("opened,frames", [(False, 1000), (True, 0)])
+def test_network_requires_open_and_initial_frame(opened: bool, frames: int) -> None:
+    capture = FakeCapture(opened=opened, frames=frames)
+    source = NetworkStreamSource("http://host/video", capture_factory=lambda *args: capture)
+    source.start()
+    try:
+        deadline = time.monotonic() + 1
+        while source.info().error is None and time.monotonic() < deadline:
+            source.read(0.01)
+        assert source.info().error
+        assert not source.info().opened
+        assert source.read(0) is None
+    finally:
+        source.close()
+    assert capture.released
+
+
+def test_network_buffer_setting_is_best_effort() -> None:
+    class UnsupportedBufferCapture(FakeCapture):
+        def set(self, prop: int, value: float) -> bool:
+            raise RuntimeError("unsupported property")
+
+    source = NetworkStreamSource("http://host/video", mirror=False,
+                                 capture_factory=lambda *args: UnsupportedBufferCapture())
+    source.start()
+    try:
+        frame = source.read()
+        assert frame is not None
+        assert np.all(frame[0][:, 0] == 255)
+    finally:
+        source.close()
+
+
+def test_network_counts_consecutive_failures() -> None:
+    capture = FakeCapture()
+    frame = np.zeros((8, 12, 3), np.uint8)
+    results = iter([(True, frame), (False, None), (False, None),
+                    (True, frame), (False, None), (False, None), (False, None)])
+    reads: list[bool] = []
+
+    def read() -> tuple[bool, np.ndarray | None]:
+        result = next(results)
+        reads.append(result[0])
+        return result
+
+    capture.read = read
+    source = NetworkStreamSource("http://host/video", capture_factory=lambda *args: capture)
+    try:
+        with pytest.raises(RuntimeError, match="repeatedly"):
+            source._stream()
+        assert reads == [True, False, False, True, False, False, False]
+        assert source._sequence == 2
+    finally:
+        source._release()
+
+
+def test_network_release_errors_redacted(caplog: pytest.LogCaptureFixture) -> None:
+    url = "rtsp://user:secret@host/video"
+
+    class FailedReleaseCapture(FakeCapture):
+        def release(self) -> None:
+            raise RuntimeError(f"Cannot release {url}: secret")
+
+    source = NetworkStreamSource(url)
+    source._capture = FailedReleaseCapture()
+    source._release()
+    assert "Cannot release" in caplog.text
+    assert "secret" not in caplog.text

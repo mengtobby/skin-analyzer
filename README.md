@@ -81,7 +81,7 @@ The wire format is specified in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--source` | `camera:0` | `camera:<index>` or `file:<video or image>` |
+| `--source` | `camera:0` | `camera:<index>`, `file:<video or image>`, or `url:<http\|https\|rtsp stream>` |
 | `--detector` | `auto` | `classical`, `onnx`, or `auto` (ONNX model if present) |
 | `--preprocess` | `auto` | `cpu`, `cuda`, or `auto` |
 | `--width/--height/--fps` | 1280×720 @ 30 | capture request |
@@ -89,6 +89,16 @@ The wire format is specified in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `--host/--port` | 127.0.0.1:8000 | binding to a non-loopback host exposes your camera to the network; the server warns |
 | `--extra-origins` | — | extra trusted browser origins (comma-separated) |
 | `--open` | off | open the dashboard in an Edge app window |
+
+### Using a phone as the camera
+
+Install an IP-camera app on your phone and keep the phone and laptop on the same Wi-Fi. Start the stream in the app, then run:
+
+```powershell
+.\start.ps1 -Source url:http://<phone-ip>:<port>/video
+```
+
+The exact stream path depends on the app. The HTTP stream is unencrypted over the local network, so use it only on trusted Wi-Fi. Apps exposing the phone as a virtual webcam work as `camera:<index>` instead.
 
 ## Optional: learned lesion model
 
