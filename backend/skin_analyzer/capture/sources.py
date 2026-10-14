@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Protocol
+from urllib.parse import unquote, urlsplit
 
 import cv2
 import numpy as np
@@ -105,8 +106,12 @@ class _ThreadedSource:
         if capture is not None:
             try:
                 capture.release()
-            except Exception:
-                logger.exception("Failed to release %s", self._info.spec)
+            except Exception as exc:
+                logger.warning("Failed to release %s: %s", self._info.spec,
+                               self._error_text(exc))
+
+    def _error_text(self, exc: Exception) -> str:
+        return str(exc) or type(exc).__name__
 
     def _run(self) -> None:
         try:
@@ -114,8 +119,9 @@ class _ThreadedSource:
                 try:
                     self._stream()
                 except Exception as exc:
-                    self._update(opened=False, error=str(exc) or type(exc).__name__)
-                    logger.warning("Capture %s failed: %s", self._info.spec, exc)
+                    error = self._error_text(exc)
+                    self._update(opened=False, error=error)
+                    logger.warning("Capture %s failed: %s", self._info.spec, error)
                 finally:
                     self._release()
                 self._stop.wait(2.0)
@@ -175,6 +181,62 @@ class CameraSource(_ThreadedSource):
             self._publish(frame)
 
 
+class NetworkStreamSource(_ThreadedSource):
+    def __init__(self, url: str, width: int = 1280, height: int = 720,
+                 fps: int = 30, mirror: bool = True,
+                 capture_factory: CaptureFactory | None = None) -> None:
+        try:
+            parsed = urlsplit(url)
+            if (parsed.scheme.lower() not in {"http", "https", "rtsp"}
+                    or not parsed.hostname or any(char.isspace() for char in url)):
+                raise ValueError
+            password = parsed.password
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError("Invalid network stream URL") from None
+        self._url = url
+        self._password = password
+        safe_url = url
+        if password is not None:
+            userinfo, host = parsed.netloc.rsplit("@", 1)
+            safe_netloc = userinfo.split(":", 1)[0] + ":***@" + host
+            safe_url = url.replace(parsed.netloc, safe_netloc, 1)
+        self._safe_url = safe_url
+        super().__init__(f"url:{safe_url}", width, height, fps, mirror, capture_factory)
+
+    def _error_text(self, exc: Exception) -> str:
+        error = super()._error_text(exc).replace(self._url, self._safe_url)
+        if self._password:
+            for password in (self._password, unquote(self._password)):
+                if password:
+                    error = error.replace(password, "***")
+        return error
+
+    def _stream(self) -> None:
+        self._capture = self._factory(self._url, cv2.CAP_FFMPEG)
+        if not self._capture.isOpened():
+            raise RuntimeError("Network stream did not open")
+        try:
+            self._capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        except Exception as exc:
+            logger.debug("Cannot set stream buffer size: %s", self._error_text(exc))
+        ok, frame = self._capture.read()
+        if not ok or frame is None:
+            raise RuntimeError("Network stream failed its initial frame read")
+        self._publish(frame)
+        failures = 0
+        while not self._stop.is_set():
+            ok, frame = self._capture.read()
+            if not ok or frame is None:
+                failures += 1
+                self._update(error="Network stream frame read failed")
+                if failures >= 3:
+                    raise RuntimeError("Network stream frame reads failed repeatedly")
+                self._stop.wait(0.02)
+                continue
+            failures = 0
+            self._publish(frame)
+
+
 class VideoFileSource(_ThreadedSource):
     def __init__(self, path: str | Path, fps: int = 30, mirror: bool = True,
                  capture_factory: CaptureFactory | None = None) -> None:
@@ -222,6 +284,8 @@ def create_source(spec: str, width: int = 1280, height: int = 720,
     if not isinstance(spec, str):
         raise ValueError("Source specification must be a string")
     kind, separator, value = spec.partition(":")
+    if separator and kind == "url":
+        return NetworkStreamSource(value, width, height, fps, mirror, capture_factory)
     if separator and kind == "camera" and value.isascii() and value.isdecimal():
         return CameraSource(int(value), width, height, fps, mirror, capture_factory)
     if separator and kind == "file" and value.strip():
