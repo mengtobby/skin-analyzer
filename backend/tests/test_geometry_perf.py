@@ -100,8 +100,9 @@ def _old_zone_map(
 @pytest.mark.parametrize("mirrored", [True, False])
 def test_zone_map_matches_previous_algorithm(scale, angle, mirrored):
     landmarks = place(canonical_landmarks(), scale, angle, (640, 300))
-    region = build_face_region(landmarks, mirrored=mirrored)
-    expected = _old_zone_map(region.frame.to_canonical(landmarks), region.canvas, mirrored)
+    params = ZoneParams(hairline_band=0)
+    region = build_face_region(landmarks, mirrored=mirrored, params=params)
+    expected = _old_zone_map(region.frame.to_canonical(landmarks), region.canvas, mirrored, params)
     assert (region.zone_map == expected).mean() >= 0.99
 
 
@@ -116,15 +117,16 @@ def test_shading_matches_per_pixel_reference(scale, angle, ppu):
 
 
 def test_build_face_region_timing():
+    params = ZoneParams(hairline_band=0)
     landmarks = place(canonical_landmarks(), 200, 15, (640, 300))
     region = build_face_region(landmarks)
     canon = region.frame.to_canonical(landmarks)
     fast, reference = [], []
     for _ in range(10):
         start = perf_counter()
-        build_face_region(landmarks)
+        build_face_region(landmarks, params=params)
         fast.append(perf_counter() - start)
         start = perf_counter()
-        _old_zone_map(canon, region.canvas, True)
+        _old_zone_map(canon, region.canvas, True, params)
         reference.append(perf_counter() - start)
     assert min(fast) < min(reference) / 2

@@ -1,4 +1,4 @@
-"""Adaptive skin refinement: drop hair, beard, glasses frames and deep shadow pixels."""
+"""Adaptive skin refinement: drop hair with a forehead margin, beard, glasses and shadows."""
 
 from __future__ import annotations
 
@@ -78,6 +78,22 @@ def _enclosed_red_skin(
     return restored[labels]
 
 
+def _hair_margin(forehead: np.ndarray, ok: np.ndarray, radius: int) -> np.ndarray:
+    """Euclidean margin around rejected components touching the forehead's top edge."""
+    rejected = forehead & ~ok
+    if not rejected.any():
+        return np.zeros(forehead.shape, bool)
+    _, labels = cv2.connectedComponents(rejected.astype(np.uint8), connectivity=8)
+    above = np.zeros_like(forehead)
+    above[1:] = forehead[:-1]
+    boundary_labels = np.unique(labels[forehead & ~above])
+    fringe = np.isin(labels, boundary_labels[boundary_labels != 0])
+    if not fringe.any():
+        return np.zeros(forehead.shape, bool)
+    distance = cv2.distanceTransform((~fringe).astype(np.uint8), cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
+    return forehead & (distance <= radius)
+
+
 def refine_zone_map(
     zone_map: np.ndarray,
     lab: np.ndarray,
@@ -85,6 +101,8 @@ def refine_zone_map(
     max_bright: float = 25.0,
     max_da: float = 22.0,
     max_db: float = 18.0,
+    *,
+    hair_margin_px: int = 8,
 ) -> np.ndarray:
     """Zero out zone pixels whose colour is far from this face's own median skin colour.
 
@@ -92,7 +110,10 @@ def refine_zone_map(
     zone pixels. This adapts to skin tone without letting a large hair fringe
     dominate the reference. Low-chroma pixels are rejected relative to that skin.
     Red components mostly bordered by accepted skin are retained as possible lesions.
+    Rejected hair touching the forehead's upper boundary gets a surrounding margin.
     """
+    if isinstance(hair_margin_px, bool) or not isinstance(hair_margin_px, int) or hair_margin_px < 0:
+        raise ValueError("Hair margin must be a non-negative integer")
     if zone_map.ndim != 2 or lab.shape != (*zone_map.shape, 3):
         raise ValueError("Lab canvas must match the two-dimensional zone map")
     if not np.isfinite(lab).all():
@@ -118,4 +139,6 @@ def refine_zone_map(
     red = skin & colour_ok & (d[..., 1] >= max_da)
     if red.any():
         ok |= _enclosed_red_skin(ok, red, skin)
+    if hair_margin_px > 0:
+        ok &= ~_hair_margin(zone_map == ZONE_IDS[FaceZone.FOREHEAD], ok, hair_margin_px)
     return np.where(ok, zone_map, 0).astype(zone_map.dtype)
