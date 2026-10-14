@@ -27,6 +27,7 @@ class ZoneParams:
     nose_side_gap: float = 0.03
     min_nose_half_width: float = 0.16
     polygon_epsilon_px: float = 2.0
+    hairline_band: float = 0.10  # canonical units
 
 
 def face_frame_from_landmarks(landmarks: np.ndarray) -> FaceFrame:
@@ -169,6 +170,13 @@ def build_zone_map(
     ):
         zone[mask] = ZONE_IDS[z]
     zone[~skin | shading_mask(canvas, canon, params)] = 0
+    band_px = int(round(params.hairline_band * ppu))
+    if band_px > 0:
+        below_hairline = cv2.erode(
+            skin.astype(np.uint8), np.ones((band_px + 1, 1), np.uint8),
+            anchor=(0, band_px), borderType=cv2.BORDER_CONSTANT, borderValue=0,
+        ).astype(bool)
+        zone[forehead & ~below_hairline] = 0
     return zone
 
 

@@ -4,6 +4,8 @@ import pytest
 from skin_analyzer.domain import ZONE_IDS, FaceZone
 from skin_analyzer.face import OneEuroFilter, build_face_region, face_frame_from_landmarks
 from skin_analyzer.face.skin_mask import refine_zone_map
+from skin_analyzer.face.geometry import ZoneParams, build_zone_map
+from skin_analyzer.domain import CanvasSpec
 from tests.synthetic_face import canonical_landmarks, place
 
 pytestmark = pytest.mark.unit
@@ -63,8 +65,31 @@ def test_refine_zone_map_drops_off_colour_pixels():
     lab[:5] = (20, 2, 3)  # hair fringe
     refined = refine_zone_map(zone_map, lab)
     assert (refined[:5] == 0).all()
-    assert (refined[5:] == ZONE_IDS[FaceZone.FOREHEAD]).all()
+    assert (refined[5:13] == 0).all()
+    assert (refined[13:] == ZONE_IDS[FaceZone.FOREHEAD]).all()
     assert (zone_map[:5] != 0).all()  # input untouched
+
+
+@pytest.mark.parametrize("ppu", [80, 160, 240])
+@pytest.mark.parametrize("band", [0.10, 0.20])
+def test_hairline_band_only_removes_top_forehead_skin(ppu, band):
+    canvas = CanvasSpec(px_per_unit=ppu)
+    canon = canonical_landmarks()
+    original = canon.copy()
+    legacy = build_zone_map(canon, canvas, True, ZoneParams(hairline_band=0))
+    guarded = build_zone_map(canon, canvas, True, ZoneParams(hairline_band=band))
+    forehead = legacy == ZONE_IDS[FaceZone.FOREHEAD]
+    rows = np.arange(legacy.shape[0])[:, None]
+    top = np.where(legacy > 0, rows, legacy.shape[0]).min(axis=0)
+    excluded = forehead & (rows < top + round(band * ppu))
+    assert excluded.any()
+    assert not guarded[excluded].any()
+    np.testing.assert_array_equal(guarded[~excluded], legacy[~excluded])
+    np.testing.assert_array_equal(canon, original)
+    np.testing.assert_array_equal(
+        build_zone_map(canon, canvas, True),
+        build_zone_map(canon, canvas, True, ZoneParams(hairline_band=0.10)),
+    )
 
 
 def test_one_euro_reduces_jitter_but_follows_motion():
