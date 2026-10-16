@@ -40,11 +40,12 @@ function useCameraInput() {
   async function apply() {
     connect(true); fail(""); notify("");
     try {
-      const value = await setSource(selection === "url" ? { kind: "url", url } :
-        { kind: "camera", camera_index: Number(selection) });
+      const { source: value, saved } = await setSource(selection === "url" ? { kind: "url", url } :
+        { kind: "camera", index: Number(selection) });
       updateSource(value); updateUrl("");
       select(value.kind === "camera" ? String(value.camera_index) : "url");
-      notify(`Now using ${sourceLabel(value)}. Earlier results were cleared.`);
+      notify(`Now using ${sourceLabel(value)}. Earlier results were cleared.` +
+        (saved ? "" : " This choice could not be saved for next launch."));
     } catch (e) { fail(e instanceof Error ? e.message : "Settings service unavailable"); }
     finally { connect(false); }
   }

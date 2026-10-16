@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("settings shows the file source and scans only mocked cameras", async ({ page }) => {
   await page.route("**/api/settings/cameras", (route) => route.fulfill({
-    json: { success: true, data: [{ index: 2, width: 640, height: 480 }], error: null },
+    json: { success: true, data: { cameras: [{ index: 2, width: 640, height: 480, active: false }] }, error: null },
   }));
   await page.goto("/");
   await page.getByRole("tab", { name: "Settings", exact: true }).click();

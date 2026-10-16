@@ -8,25 +8,45 @@ const reply = (data: unknown, success = true, error: string | null = null) =>
 
 it("validates sources and sends a typed source request", async () => {
   const source = { kind: "camera", spec: "camera:2", camera_index: 2 };
-  reply(source);
+  reply({ source });
   expect(await getSettings()).toEqual(source);
-  expect(await setSource({ kind: "camera", camera_index: 2 })).toEqual(source);
+  reply({ source, saved: true });
+  expect(await setSource({ kind: "camera", index: 2 })).toEqual({ source, saved: true });
   expect(fetch).toHaveBeenLastCalledWith("/api/settings/source", expect.objectContaining({
-    method: "POST", body: JSON.stringify({ kind: "camera", camera_index: 2 }),
+    method: "POST", body: JSON.stringify({ kind: "camera", index: 2 }),
   }));
 });
 
 it.each([null, {}, { kind: "camera", spec: "camera:0", camera_index: -1 },
   { kind: "other", spec: "x", camera_index: null }])("rejects malformed settings %j", async (data) => {
-  reply(data);
+  reply({ source: data });
   await expect(getSettings()).rejects.toThrow("Settings service unavailable");
 });
 
 it("validates every camera and accepts an empty scan", async () => {
-  reply([]); expect(await getCameras()).toEqual([]);
-  reply([{ index: 0, width: 640, height: 480 }]); expect(await getCameras()).toHaveLength(1);
-  reply([{ index: 0, width: "640", height: 480 }]);
+  reply({ cameras: [] }); expect(await getCameras()).toEqual([]);
+  const camera = { index: 0, width: 640, height: 480, active: true };
+  reply({ cameras: [camera] }); expect(await getCameras()).toEqual([camera]);
+  reply({ cameras: [{ ...camera, width: "640" }] });
   await expect(getCameras()).rejects.toThrow("Settings service unavailable");
+});
+
+it("requires boolean active flags and wrapped camera lists", async () => {
+  for (const data of [[], { cameras: [{}] },
+    { cameras: [{ index: 0, width: 640, height: 480, active: "true" }] }]) {
+    reply(data);
+    await expect(getCameras()).rejects.toThrow("Settings service unavailable");
+  }
+});
+
+it("returns persistence failures and validates switch results", async () => {
+  const source = { kind: "url", spec: "url:rtsp://phone/live", camera_index: null };
+  reply({ source, saved: false });
+  expect(await setSource({ kind: "url", url: "rtsp://phone/live" })).toEqual({ source, saved: false });
+  for (const data of [source, { source }, { source, saved: "false" }, { source: {}, saved: true }]) {
+    reply(data);
+    await expect(setSource({ kind: "url", url: "rtsp://phone/live" })).rejects.toThrow("Settings service unavailable");
+  }
 });
 
 it("uses server errors and hides transport errors", async () => {
