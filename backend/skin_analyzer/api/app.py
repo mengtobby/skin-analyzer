@@ -17,8 +17,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from ..capture import probe_cameras
 from ..config import Settings
-from ..pipeline import PipelineRunner, build_default_runner
+from ..user_settings import UserSettings, UserSettingsStore
+from ..pipeline import PipelineRunner, SourceBusyError, SourceSwitchError, build_default_runner
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +178,9 @@ def create_app(settings: Settings | None = None, runner: PipelineRunner | None =
             await asyncio.to_thread(active.close if hasattr(active, "close") else active.stop)
 
     app = FastAPI(lifespan=lifespan)
+    app.state.settings = settings
+    app.state.camera_lock = asyncio.Lock()
+    app.state.camera_cache = None
     app.state.active_streams = 0
     app.state.allowed_origins, trusted_hosts = _trusted_settings(settings)
     if runner is not None:
@@ -223,6 +228,7 @@ def _register_rest(app: FastAPI) -> None:
 
 def _register_routes(app: FastAPI) -> None:
     _register_rest(app)
+    _register_settings(app)
 
     @app.websocket("/ws/stream")
     async def stream(socket: WebSocket) -> None:
@@ -241,3 +247,90 @@ def _register_routes(app: FastAPI) -> None:
             await _stream_session(socket, app.state.runner)
         finally:
             app.state.active_streams -= 1
+
+
+def _source_view(runner: PipelineRunner) -> dict:
+    spec = runner.source.info().spec
+    kind, _, value = spec.partition(":")
+    return {"kind": kind, "spec": spec,
+            "camera_index": int(value) if kind == "camera" else None}
+
+
+def _settings_error(status: int, message: str) -> JSONResponse:
+    return JSONResponse(status_code=status, content={
+        "success": False, "data": None, "error": message})
+
+
+def _input_spec(body: object) -> str:
+    if isinstance(body, dict):
+        if (set(body) == {"kind", "index"} and body["kind"] == "camera"
+                and type(body["index"]) is int and 0 <= body["index"] <= 9):
+            return f"camera:{body['index']}"
+        if set(body) == {"kind", "url"} and body["kind"] == "url":
+            url = body["url"]
+            if isinstance(url, str) and 0 < len(url) <= 2048 and not any(c.isspace() for c in url):
+                parsed = urlsplit(url)
+                parsed.port
+                if parsed.scheme in {"http", "https", "rtsp"} and parsed.hostname:
+                    return f"url:{url}"
+    raise ValueError("Choose a camera from 0 to 9 or a valid HTTP, HTTPS or RTSP stream address")
+
+
+async def _camera_list(app: FastAPI) -> list[dict]:
+    async with app.state.camera_lock:
+        view = _source_view(app.state.runner)
+        active = view["camera_index"]
+        cache = app.state.camera_cache
+        if cache is None or cache[0] != active or time.monotonic() - cache[1] >= 10:
+            probes = await asyncio.to_thread(probe_cameras, skip={active} if active is not None else set())
+            cache = (active, time.monotonic(), probes)
+            app.state.camera_cache = cache
+        cameras = [{"index": c.index, "width": c.width, "height": c.height, "active": False}
+                   for c in cache[2] if c.index != active]
+        if active is not None:
+            info = app.state.runner.source.info()
+            cameras.append({"index": active, "width": info.width, "height": info.height, "active": True})
+        return sorted(cameras, key=lambda camera: camera["index"])
+
+
+async def _change_source(app: FastAPI, spec: str) -> dict | JSONResponse:
+    try:
+        await asyncio.to_thread(app.state.runner.switch_source, spec)
+    except SourceBusyError:
+        return _settings_error(409, "Another input change is in progress")
+    except SourceSwitchError as exc:
+        return _settings_error(502, str(exc).replace(spec, "stream address").replace(
+            spec.removeprefix("url:"), "stream address"))
+    except ValueError:
+        return _settings_error(422, "That stream address is not valid")
+    saved = True
+    try:
+        await asyncio.to_thread(UserSettingsStore(app.state.settings.settings_file).save,
+                                UserSettings(source=spec))
+    except (OSError, ValueError):
+        logger.warning("Could not save camera input preference")
+        saved = False
+    app.state.camera_cache = None
+    return {"success": True, "data": {"source": _source_view(app.state.runner), "saved": saved},
+            "error": None}
+
+
+def _register_settings(app: FastAPI) -> None:
+    @app.get("/api/settings")
+    async def settings() -> dict:
+        return {"success": True, "data": {"source": _source_view(app.state.runner)}, "error": None}
+
+    @app.get("/api/settings/cameras")
+    async def cameras() -> dict:
+        return {"success": True, "data": {"cameras": await _camera_list(app)}, "error": None}
+
+    @app.post("/api/settings/source", response_model=None)
+    async def source(request: Request) -> dict | JSONResponse:
+        origin = request.headers.get("origin")
+        if origin is not None and origin not in app.state.allowed_origins:
+            return _settings_error(403, "Origin not allowed")
+        try:
+            spec = _input_spec(await request.json())
+        except (ValueError, TypeError):
+            return _settings_error(422, "Choose a camera from 0 to 9 or a valid HTTP, HTTPS or RTSP stream address")
+        return await _change_source(app, spec)

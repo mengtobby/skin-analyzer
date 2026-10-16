@@ -18,6 +18,7 @@ import uvicorn
 from .api.app import _loopback, create_app
 from .config import Settings
 from .download_models import ensure_models
+from .user_settings import UserSettingsStore
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,11 @@ def main() -> None:
         overrides["mirror"] = False
     settings = replace(Settings.from_env(), **overrides)
     logging.basicConfig(level=logging.INFO)
+    if args.source is None and "SKIN_SOURCE" not in os.environ:
+        saved = UserSettingsStore(settings.settings_file).load().source
+        if saved is not None:
+            settings = replace(settings, source=saved)
+            logger.info("Using saved camera input (%s)", saved.split(":", 1)[0])
     if not _loopback(settings.host):
         logger.warning("CAMERA EXPOSED: binding to non-loopback host %s without authentication", settings.host)
     if settings.landmarker_model == Settings().landmarker_model:
