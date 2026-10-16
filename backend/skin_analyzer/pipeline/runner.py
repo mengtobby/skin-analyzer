@@ -22,6 +22,14 @@ DELIVERY_WINDOW_S = 2.0
 LOG_INTERVAL_S = 5.0
 
 
+class SourceSwitchError(RuntimeError):
+    """A replacement input could not deliver a frame."""
+
+
+class SourceBusyError(RuntimeError):
+    """Another input switch is in progress."""
+
+
 class PipelineRunner:
     def __init__(self, settings: Settings, source: FrameSource, analyzer: FrameAnalyzer,
                  kb: KnowledgeBase, onnx_providers: tuple[str, ...] = (),
@@ -46,6 +54,9 @@ class PipelineRunner:
         self._log_counts: dict[tuple[str, type], tuple[float, int]] = {}
         self._close_thread: threading.Thread | None = None
         self._source_factory: Callable[[], FrameSource] | None = None
+        self._create_source: Callable[[str], FrameSource] | None = None
+        self._source_spec = settings.source
+        self._switch_lock = threading.Lock()
         self._last_frame = 0.0
         self._fps = 0.0
         self._last_report = 0.0
@@ -112,10 +123,62 @@ class PipelineRunner:
             self._log_failure("Landmarker close failed", exc)
 
     def _close_source(self) -> None:
+        self._close_input(self.source)
+
+    def _close_input(self, source: FrameSource) -> None:
         try:
-            self.source.close()
-        except Exception as exc:
-            self._log_failure("Source close failed", exc)
+            source.close()
+        except Exception:
+            logger.warning("Source close failed")
+
+    def source_spec(self) -> str:
+        """Return the raw input specification for persistence only."""
+        with self._condition:
+            return self._source_spec
+
+    def switch_source(self, spec: str, timeout_s: float = 6.0) -> None:
+        if not self._switch_lock.acquire(blocking=False):
+            raise SourceBusyError("Another input change is in progress")
+        try:
+            self._switch_source(spec, timeout_s)
+        finally:
+            self._switch_lock.release()
+
+    def _switch_source(self, spec: str, timeout_s: float) -> None:
+        with self._condition:
+            if self._closed or self._create_source is None:
+                raise RuntimeError("Pipeline runner is closed or cannot change inputs")
+            if spec == self._source_spec:
+                return
+        if not math.isfinite(timeout_s) or timeout_s < 0:
+            raise ValueError("Switch timeout must be finite and nonnegative")
+        new_source = self._create_source(spec)
+        try:
+            new_source.start()
+            deadline = time.monotonic() + timeout_s
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise SourceSwitchError(
+                        f"No frames received from {new_source.info().spec}; "
+                        "the previous input is still active")
+                if new_source.read(timeout=min(0.05, remaining)) is not None:
+                    break
+            with self._analysis_lock, self._condition:
+                if self._closed:
+                    raise RuntimeError("Pipeline runner is closed")
+                self.analyzer.reset()
+                old_source, self.source = self.source, new_source
+                self._source_spec = spec
+                self._packet = self._report = None
+                self._last_frame = self._last_report = self._fps = 0.0
+                self._frame_error = self._report_error = None
+                self._condition.notify_all()
+        except Exception:
+            threading.Thread(target=self._close_input, args=(new_source,), daemon=True).start()
+            raise
+        threading.Thread(target=self._close_input, args=(old_source,), daemon=True).start()
+        self._notify_listeners()
 
     @property
     def is_running(self) -> bool:
@@ -173,11 +236,13 @@ class PipelineRunner:
     def _run_frames(self) -> None:
         while not self._stop.is_set():
             try:
-                frame = self.source.read(timeout=0.5)
+                source = self.source
+                frame = source.read(timeout=0.5)
                 if frame is None or self._stop.is_set():
                     continue
                 with self._analysis_lock:
-                    self._process(*frame)
+                    if source is self.source:
+                        self._process(*frame)
             except Exception as exc:
                 self._set_error("frame", exc)
                 self._stop.wait(0.01)
@@ -314,6 +379,8 @@ def build_default_runner(settings: Settings) -> PipelineRunner:
     source = create_source(settings.source, settings.width, settings.height,
                            settings.fps, settings.mirror)
     runner = PipelineRunner(settings, source, analyzer, kb, providers, detector.name, preprocessor.name)
-    runner._source_factory = lambda: create_source(
-        settings.source, settings.width, settings.height, settings.fps, settings.mirror)
+    runner._create_source = lambda spec: create_source(
+        spec, settings.width, settings.height, settings.fps, settings.mirror)
+    runner._source_spec = settings.source
+    runner._source_factory = lambda: runner._create_source(runner._source_spec)
     return runner

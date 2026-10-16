@@ -342,3 +342,41 @@ def test_network_release_errors_redacted(caplog: pytest.LogCaptureFixture) -> No
     source._release()
     assert "Cannot release" in caplog.text
     assert "secret" not in caplog.text
+
+
+def test_camera_probe_skips_releases_and_ignores_failures(monkeypatch):
+    from skin_analyzer.capture import CameraInfo, probe_cameras
+    from skin_analyzer.capture import sources
+    monkeypatch.setattr(sources.sys, "platform", "win32")
+    captures = []
+    calls = []
+    class ProbeCapture(FakeCapture):
+        def read(self):
+            if not self.opened:
+                raise RuntimeError("bad index")
+            return True, np.zeros((9, 14, 3), np.uint8)
+    def factory(index, backend):
+        calls.append((index, backend))
+        capture = ProbeCapture(opened=index == 2 and backend == cv2.CAP_MSMF)
+        captures.append(capture)
+        return capture
+    assert probe_cameras([0, 1, 2], skip=[0], capture_factory=factory) == [CameraInfo(2, 14, 9)]
+    assert all(capture.released for capture in captures)
+    assert calls == [(1, b) for b in [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]] + [
+        (2, cv2.CAP_DSHOW), (2, cv2.CAP_MSMF)]
+
+
+def test_camera_probe_read_exception_releases_and_continues():
+    from skin_analyzer.capture import probe_cameras
+    captures = []
+    class BrokenCapture(FakeCapture):
+        def read(self):
+            raise RuntimeError("read failed")
+    def factory(index, backend):
+        if index == 0:
+            raise RuntimeError("constructor failed")
+        capture = BrokenCapture()
+        captures.append(capture)
+        return capture
+    assert probe_cameras([0, 1], capture_factory=factory) == []
+    assert captures and all(capture.released for capture in captures)
