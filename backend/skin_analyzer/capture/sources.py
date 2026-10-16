@@ -7,6 +7,7 @@ import math
 import sys
 import threading
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -18,6 +19,43 @@ import numpy as np
 logger = logging.getLogger(__name__)
 CaptureFactory = Callable[..., Any]
 Frame = tuple[np.ndarray, float, int]
+
+
+@dataclass(frozen=True)
+class CameraInfo:
+    index: int
+    width: int
+    height: int
+
+
+def probe_cameras(indices: Iterable[int] = range(6), skip: Iterable[int] = (),
+                  capture_factory: CaptureFactory | None = None) -> list[CameraInfo]:
+    factory = capture_factory or cv2.VideoCapture
+    excluded = set(skip)
+    backends = ([cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+                if sys.platform == "win32" else [cv2.CAP_ANY])
+    cameras = []
+    for index in indices:
+        if index in excluded:
+            continue
+        for backend in backends:
+            capture = None
+            try:
+                capture = factory(index, backend)
+                if capture.isOpened():
+                    ok, frame = capture.read()
+                    if ok and frame is not None and frame.size:
+                        cameras.append(CameraInfo(index, frame.shape[1], frame.shape[0]))
+                        break
+            except Exception:
+                logger.debug("Camera probe failed for index %s", index)
+            finally:
+                if capture is not None:
+                    try:
+                        capture.release()
+                    except Exception:
+                        logger.debug("Camera probe release failed for index %s", index)
+    return cameras
 
 
 @dataclass(frozen=True)
