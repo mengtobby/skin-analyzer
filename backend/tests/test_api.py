@@ -384,3 +384,90 @@ def test_runner_close_on_shutdown() -> None:
     with TestClient(headers={"host": "localhost"}, app=create_app(Settings(), runner), base_url="http://localhost"):
         assert runner.started and not runner.closed
     assert runner.closed and runner.stopped
+
+class SettingsRunner(FakeRunner):
+    def __init__(self):
+        super().__init__()
+        from skin_analyzer.capture import create_source
+        self.source = create_source("camera:2", width=640, height=480)
+        self.specs = []
+
+    def switch_source(self, spec):
+        from skin_analyzer.capture import create_source
+        self.specs.append(spec)
+        self.source = create_source(spec)
+
+
+def test_settings_switch_and_redaction(tmp_path):
+    from skin_analyzer.user_settings import UserSettingsStore
+    runner = SettingsRunner()
+    path = tmp_path / "settings.json"
+    with TestClient(create_app(Settings(settings_file=path), runner), base_url="http://localhost") as client:
+        assert client.get("/api/settings").json()["data"]["source"] == {
+            "kind": "camera", "spec": "camera:2", "camera_index": 2}
+        url = "http://user:secret@phone.example/video?token=private"
+        response = client.post("/api/settings/source", json={"kind": "url", "url": url})
+        assert response.status_code == 200 and response.json()["data"]["saved"]
+        assert "secret" not in response.text and "private" not in response.text
+        assert runner.specs == ["url:" + url]
+        assert UserSettingsStore(path).load().source == "url:" + url
+
+
+@pytest.mark.parametrize("body", [{"kind": "file", "path": "x"}, {"kind": "camera", "index": True},
+    {"kind": "camera", "index": 10}, {"kind": "camera", "index": -1},
+    {"kind": "url", "url": "file:secret"}, {"kind": "url", "url": "http://a/ secret"},
+    {"kind": "url", "url": "http://a:" + "9" * 8}, {"kind": "url", "url": "x" * 2049},
+    {"kind": "camera", "index": 0, "extra": 1}, [], None])
+def test_settings_invalid(body, tmp_path):
+    runner = SettingsRunner()
+    with TestClient(create_app(Settings(settings_file=tmp_path / "s"), runner), base_url="http://localhost") as client:
+        response = client.post("/api/settings/source", json=body)
+        assert response.status_code == 422
+        assert response.json()["data"] is None and not runner.specs
+        assert "secret" not in response.text
+
+
+def test_camera_probe_cache(monkeypatch, tmp_path):
+    from skin_analyzer.api import app as api
+    from skin_analyzer.capture import CameraInfo
+    calls = []
+    now = [100.0]
+    monkeypatch.setattr(api.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(api, "probe_cameras", lambda **kw: calls.append(kw) or [CameraInfo(0, 320, 240)])
+    with TestClient(create_app(Settings(settings_file=tmp_path / "s"), SettingsRunner()), base_url="http://localhost") as client:
+        cameras = client.get("/api/settings/cameras").json()["data"]["cameras"]
+        assert cameras == [{"index": 0, "width": 320, "height": 240, "active": False},
+                           {"index": 2, "width": 640, "height": 480, "active": True}]
+        client.get("/api/settings/cameras")
+        assert calls == [{"skip": {2}}]
+        now[0] += 10
+        client.get("/api/settings/cameras")
+        assert len(calls) == 2
+
+
+@pytest.mark.parametrize("error,status,message", [("busy", 409, "Another input change is in progress"),
+    ("switch", 502, "Could not open camera"), ("invalid", 422, "That stream address is not valid")])
+def test_settings_switch_errors(error, status, message, monkeypatch, tmp_path):
+    from skin_analyzer.pipeline import SourceBusyError, SourceSwitchError
+    runner = SettingsRunner()
+    exception = {"busy": SourceBusyError, "switch": SourceSwitchError, "invalid": ValueError}[error]
+    def fail(spec):
+        raise exception("Could not open camera")
+    monkeypatch.setattr(runner, "switch_source", fail)
+    with TestClient(create_app(Settings(settings_file=tmp_path / "s"), runner), base_url="http://localhost") as client:
+        response = client.post("/api/settings/source", json={"kind": "camera", "index": 0})
+        assert response.status_code == status and response.json()["error"] == message
+
+
+def test_settings_origin_and_save_failure(monkeypatch, tmp_path):
+    from skin_analyzer.user_settings import UserSettingsStore
+    runner = SettingsRunner()
+    def fail(*args):
+        raise OSError("secret")
+    monkeypatch.setattr(UserSettingsStore, "save", fail)
+    with TestClient(create_app(Settings(settings_file=tmp_path / "s"), runner), base_url="http://localhost") as client:
+        assert client.post("/api/settings/source", headers={"origin": "http://evil.example"},
+                           json={"kind": "camera", "index": 0}).status_code == 403
+        assert not runner.specs
+        response = client.post("/api/settings/source", json={"kind": "camera", "index": 0})
+        assert response.json()["data"]["saved"] is False

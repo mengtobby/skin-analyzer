@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from .user_settings import default_settings_path
 
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -12,6 +14,7 @@ BACKEND = Path(__file__).resolve().parents[1]
 @dataclass(frozen=True)
 class Settings:
     source: str = "camera:0"
+    settings_file: Path = field(default_factory=default_settings_path)
     width: int = 1280
     height: int = 720
     fps: int = 30
@@ -49,7 +52,7 @@ class Settings:
     def from_env(cls) -> Settings:
         values = {}
         converters = {
-            "source": str, "host": str, "detector": str, "preprocess": str,
+            "settings_file": Path, "source": str, "host": str, "detector": str, "preprocess": str,
             "port": int, "width": int, "height": int, "fps": int,
             "jpeg_quality": int, "report_interval_s": float,
             "extra_origins": lambda raw: tuple(x.strip() for x in raw.split(",") if x.strip()),

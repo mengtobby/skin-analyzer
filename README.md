@@ -9,7 +9,7 @@ Everything runs locally. No frames leave the machine.
 ## Quick start (Windows)
 
 ```powershell
-.\start.ps1                 # sets up .venv + frontend on first run, then opens the app window
+.\start.ps1                 # opens saved input (camera:0 on first run); sets up on first run
 .\start.ps1 -Source camera:1   # pick another camera
 .\start.ps1 -Dev            # backend + Vite dev server with hot reload (http://localhost:5173)
 ```
@@ -30,6 +30,10 @@ cd backend
 **For good results:** face a window or lamp so the light falls evenly on your face from the front. Sit about an arm's length from the camera, look straight ahead, and keep hair off your forehead.
 
 The app checks every analysed frame for brightness, even lighting, face size and head pose. When a frame isn't usable, analysis pauses and the live view says what to fix (for example *Too dark — face a window or lamp*), rather than reporting shadows as skin findings.
+
+## Settings
+
+Open the dashboard?s **Settings** tab to choose a local camera or enter a phone/network stream URL (HTTP, HTTPS or RTSP). Switching inputs discards current findings, tracks and scores. The choice is saved to `~/.skin-analyzer/settings.json` and restored on restart. `--source` (including `start.ps1 -Source`) and `SKIN_SOURCE` override the saved choice; the command-line flag wins over the environment. Set `SKIN_SETTINGS_FILE` to use a different settings file. A phone URL with a password is stored in that file in plain text. The Settings tab starts with camera input and can accommodate more sections later.
 
 ## How it works
 
@@ -81,7 +85,7 @@ The wire format is specified in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--source` | `camera:0` | `camera:<index>`, `file:<video or image>`, or `url:<http\|https\|rtsp stream>` |
+| `--source` | saved input or `camera:0` | `camera:<index>`, `file:<video or image>`, or `url:<http\|https\|rtsp stream>` |
 | `--detector` | `auto` | `classical`, `onnx`, or `auto` (ONNX model if present) |
 | `--preprocess` | `auto` | `cpu`, `cuda`, or `auto` |
 | `--width/--height/--fps` | 1280×720 @ 30 | capture request |
@@ -92,7 +96,7 @@ The wire format is specified in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 ### Using a phone as the camera
 
-Install an IP-camera app on your phone and keep the phone and laptop on the same Wi-Fi. Start the stream in the app, then run:
+Install an IP-camera app on your phone and keep the phone and laptop on the same Wi-Fi. Start the stream in the app, then enter its URL in Settings. To override the saved input for a launch, run:
 
 ```powershell
 .\start.ps1 -Source url:http://<phone-ip>:<port>/video
