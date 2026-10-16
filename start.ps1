@@ -1,10 +1,10 @@
 # One-command launcher: creates the Python venv and frontend build if needed, then starts
 # the backend (which serves the dashboard) and opens it as an app window.
-#   .\start.ps1                    # default camera
+#   .\start.ps1                    # saved input (camera:0 on first run)
 #   .\start.ps1 -Source camera:1   # another camera
 #   .\start.ps1 -Dev               # Vite dev server with hot reload on http://localhost:5173
 param(
-    [string]$Source = "camera:0",
+    [string]$Source = "",
     [int]$Port = 8000,
     [switch]$Dev
 )
@@ -46,18 +46,21 @@ if (-not (Test-Path (Join-Path $frontend "node_modules"))) {
     npm --prefix $frontend ci
 }
 
+$sourceArgs = @()
+if ($Source) { $sourceArgs = @("--source", $Source) }
+
 Push-Location (Join-Path $root "backend")
 try {
     if ($Dev) {
         $vite = Start-Process -FilePath "npm.cmd" -ArgumentList "--prefix", $frontend, "run", "dev" -PassThru -NoNewWindow
-        try { & $venvPy -m skin_analyzer --source $Source --port $Port }
+        try { & $venvPy -m skin_analyzer @sourceArgs --port $Port }
         finally { if ($vite -and -not $vite.HasExited) { Stop-Process -Id $vite.Id -Force } }
     } else {
         if (-not (Test-Path (Join-Path $frontend "dist\index.html"))) {
             Write-Host "Building dashboard..."
             npm --prefix $frontend run build
         }
-        & $venvPy -m skin_analyzer --source $Source --port $Port --open
+        & $venvPy -m skin_analyzer @sourceArgs --port $Port --open
     }
 } finally {
     Pop-Location
