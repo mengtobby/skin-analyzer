@@ -33,7 +33,7 @@ The app checks every analysed frame for brightness, even lighting, face size and
 
 ## Settings
 
-Open the dashboard?s **Settings** tab to choose a local camera or enter a phone/network stream URL (HTTP, HTTPS or RTSP). Switching inputs discards current findings, tracks and scores. The choice is saved to `~/.skin-analyzer/settings.json` and restored on restart. `--source` (including `start.ps1 -Source`) and `SKIN_SOURCE` override the saved choice; the command-line flag wins over the environment. Set `SKIN_SETTINGS_FILE` to use a different settings file. A phone URL with a password is stored in that file in plain text. The Settings tab starts with camera input and can accommodate more sections later.
+Open the dashboard's **Settings** tab to choose a local camera or enter a phone/network stream URL (HTTP, HTTPS or RTSP). Switching inputs discards current findings, tracks and scores. The choice is saved to `~/.skin-analyzer/settings.json` and restored on restart. `--source` (including `start.ps1 -Source`) and `SKIN_SOURCE` override the saved choice; the command-line flag wins over the environment. Set `SKIN_SETTINGS_FILE` to use a different settings file. A phone URL with a password is stored in that file in plain text. The Settings tab starts with camera input and can accommodate more sections later.
 
 ## How it works
 

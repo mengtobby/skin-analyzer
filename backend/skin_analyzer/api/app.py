@@ -303,6 +303,10 @@ async def _change_source(app: FastAPI, spec: str) -> dict | JSONResponse:
             spec.removeprefix("url:"), "stream address"))
     except ValueError:
         return _settings_error(422, "That stream address is not valid")
+    except RuntimeError:
+        # Runner closed or switching not configured; keep the envelope instead of a bare 500.
+        logger.warning("Input switch unavailable", exc_info=True)
+        return _settings_error(503, "Switching inputs is not available right now")
     saved = True
     try:
         await asyncio.to_thread(UserSettingsStore(app.state.settings.settings_file).save,

@@ -106,3 +106,32 @@ it("reports a successful live switch when the preference could not be saved", as
   expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+it("notifies the dashboard only after a successful switch", async () => {
+  const onInputChanged = vi.fn();
+  render(<CameraInputSection onInputChanged={onInputChanged} />);
+  fireEvent.click(await screen.findByLabelText("Camera 2 · 1280×720"));
+  fetchMock.mockImplementationOnce(() => Promise.resolve({ ok: false,
+    json: async () => ({ success: false, data: null, error: "Could not open camera 2" }) }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  expect(await screen.findByText("Could not open camera 2")).toBeVisible();
+  expect(onInputChanged).not.toHaveBeenCalled();
+  fetchMock.mockImplementationOnce(() => Promise.resolve(response(
+    { source: { kind: "camera", spec: "camera:2", camera_index: 2 }, saved: true })));
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  await screen.findByText("Now using Camera 2. Earlier results were cleared.");
+  expect(onInputChanged).toHaveBeenCalledTimes(1);
+});
+
+it("keeps Apply disabled while a camera scan is running", async () => {
+  render(<CameraInputSection />);
+  fireEvent.click(await screen.findByLabelText("Camera 2 · 1280×720"));
+  expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled();
+  let finish!: (value: unknown) => void;
+  fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: "Rescan" }));
+  expect(await screen.findByText("Scanning for cameras…")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+  finish(response({ cameras }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled());
+});

@@ -446,17 +446,20 @@ def test_camera_probe_cache(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("error,status,message", [("busy", 409, "Another input change is in progress"),
-    ("switch", 502, "Could not open camera"), ("invalid", 422, "That stream address is not valid")])
+    ("switch", 502, "Could not open camera"), ("invalid", 422, "That stream address is not valid"),
+    ("closed", 503, "Switching inputs is not available right now")])
 def test_settings_switch_errors(error, status, message, monkeypatch, tmp_path):
     from skin_analyzer.pipeline import SourceBusyError, SourceSwitchError
     runner = SettingsRunner()
-    exception = {"busy": SourceBusyError, "switch": SourceSwitchError, "invalid": ValueError}[error]
+    exception = {"busy": SourceBusyError, "switch": SourceSwitchError, "invalid": ValueError,
+                 "closed": RuntimeError}[error]
     def fail(spec):
         raise exception("Could not open camera")
     monkeypatch.setattr(runner, "switch_source", fail)
     with TestClient(create_app(Settings(settings_file=tmp_path / "s"), runner), base_url="http://localhost") as client:
         response = client.post("/api/settings/source", json={"kind": "camera", "index": 0})
         assert response.status_code == status and response.json()["error"] == message
+        assert response.json()["success"] is False and response.json()["data"] is None
 
 
 def test_settings_origin_and_save_failure(monkeypatch, tmp_path):

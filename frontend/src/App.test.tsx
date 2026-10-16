@@ -6,7 +6,7 @@ import { frameFixture, reportFixture } from "./protocol/fixtures";
 import type { Report } from "./protocol/types";
 import App from "./App";
 
-const state = vi.hoisted(() => ({ report: null as Report | null, mounts: 0 }));
+const state = vi.hoisted(() => ({ report: null as Report | null, mounts: 0, clearReport: () => {} }));
 vi.mock("./stream/useSkinStream", () => ({
   useSkinStream: () => {
     useEffect(() => { state.mounts += 1; }, []);
@@ -20,12 +20,16 @@ vi.mock("./stream/useSkinStream", () => ({
     connection: "connected",
     error: null,
     sendReset: vi.fn(),
+    clearReport: state.clearReport,
   }); },
 }));
 vi.mock("./components/StatusBar", () => ({ StatusBar: () => <div>Pipeline status</div> }));
 vi.mock("./components/LiveView", () => ({ LiveView: () => <div>Camera view</div> }));
 
-vi.mock("./settings/SettingsPage", () => ({ SettingsPage: () => <div>Camera input settings</div> }));
+vi.mock("./settings/SettingsPage", () => ({
+  SettingsPage: ({ onInputChanged }: { onInputChanged: () => void }) =>
+    <div>Camera input settings<button onClick={onInputChanged}>Simulate input switch</button></div>,
+}));
 afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
 
 it("freezes only the report and restores the latest report when unfrozen", () => {
@@ -72,4 +76,19 @@ it("opens settings from the hash and responds to hash navigation", () => {
   window.history.replaceState(null, "", "/");
   fireEvent(window, new Event("hashchange"));
   expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute("aria-selected", "true");
+});
+
+it("clears the live report and any frozen snapshot after the input changes", () => {
+  state.report = reportFixture;
+  state.clearReport = vi.fn(() => { state.report = null; });
+  const { rerender } = render(<App />);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Freeze report" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
+  fireEvent.click(screen.getByRole("button", { name: "Simulate input switch" }));
+  rerender(<App />);
+  expect(state.clearReport).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("tab", { name: "Dashboard" }));
+  expect(screen.getByRole("checkbox", { name: "Freeze report" })).not.toBeChecked();
+  expect(screen.queryByText(reportFixture.disclaimer)).toBeNull();
+  expect(screen.getByText("Awaiting report disclaimer.")).toBeVisible();
 });

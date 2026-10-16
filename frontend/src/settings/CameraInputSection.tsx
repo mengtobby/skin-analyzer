@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { getCameras, getSettings, setSource, sourceLabel } from "./api";
 import type { CameraOption, SourceView } from "./api";
+import type { SettingsSectionProps } from "./SettingsPage";
 
 const validUrl = (value: string) => {
   try { return ["http:", "https:", "rtsp:"].includes(new URL(value).protocol); }
   catch { return false; }
 };
 
-function useCameraInput() {
+function useCameraInput(onInputChanged?: () => void) {
   const [source, updateSource] = useState<SourceView | null>(null);
   const [cameras, updateCameras] = useState<CameraOption[]>([]);
   const [selection, select] = useState("");
@@ -44,6 +45,7 @@ function useCameraInput() {
         { kind: "camera", index: Number(selection) });
       updateSource(value); updateUrl("");
       select(value.kind === "camera" ? String(value.camera_index) : "url");
+      onInputChanged?.();
       notify(`Now using ${sourceLabel(value)}. Earlier results were cleared.` +
         (saved ? "" : " This choice could not be saved for next launch."));
     } catch (e) { fail(e instanceof Error ? e.message : "Settings service unavailable"); }
@@ -54,9 +56,9 @@ function useCameraInput() {
     scanError, status, rescan, changed, apply };
 }
 
-export function CameraInputSection() {
+export function CameraInputSection({ onInputChanged }: SettingsSectionProps) {
   const { source, cameras, selection, select, url, updateUrl, scanning, pending, error,
-    scanError, status, rescan, changed, apply } = useCameraInput();
+    scanError, status, rescan, changed, apply } = useCameraInput(onInputChanged);
   return <div className="camera-settings">
     <p>Current input: <strong>{source ? sourceLabel(source) : "Loading current input…"}</strong></p>
     {error && <p role="alert">{error}</p>}
@@ -84,7 +86,7 @@ export function CameraInputSection() {
           and paste the stream address shown in the app. Use an http, https or rtsp URL.</p>
       </div>}
     </fieldset>
-    <button disabled={pending || !source || !changed} onClick={() => void apply()}>Apply</button>
+    <button disabled={pending || scanning || !source || !changed} onClick={() => void apply()}>Apply</button>
     {pending && <p role="status">Connecting… this can take a few seconds</p>}
     {status && <p role="status">{status}</p>}
   </div>;

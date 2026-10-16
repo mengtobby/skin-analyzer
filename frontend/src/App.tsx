@@ -52,6 +52,11 @@ export default function App() {
   const [frozen, setFrozen] = useState(false);
   const [snapshot, setSnapshot] = useState<Report | null>(null);
   const report = frozen ? snapshot : stream.report;
+  function inputChanged() {
+    stream.clearReport();
+    setFrozen(false);
+    setSnapshot(null);
+  }
   return (
     <main>
       <header className="app-header">
@@ -77,7 +82,7 @@ export default function App() {
         <Dashboard stream={stream} report={report} frozen={frozen} />
       </div>
       <div role="tabpanel" id="settings-panel" aria-labelledby="settings-tab" hidden={tab !== "settings"}>
-        {tab === "settings" && <SettingsPage />}
+        {tab === "settings" && <SettingsPage onInputChanged={inputChanged} />}
       </div>
     </main>
   );
