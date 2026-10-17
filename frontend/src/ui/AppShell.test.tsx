@@ -17,4 +17,10 @@ it("renders hash links, active navigation, content and right slot", () => {
   expect(screen.getByText("Connected")).toBeVisible();
   expect(screen.getByRole("main")).toContainElement(screen.getByRole("heading", { name: "Skin" }));
   expect(screen.getByRole("link", { name: "Skin Analyzer home" })).toBeVisible();
+  const header = screen.getByRole("banner");
+  expect(Array.from(header.children)).toEqual([
+    screen.getByRole("link", { name: "Skin Analyzer home" }),
+    screen.getByRole("navigation", { name: "Main navigation" }),
+    screen.getByText("Connected").parentElement,
+  ]);
 });
