@@ -1,0 +1,18 @@
+.start-page, .camera-page { padding-top: 40px; }
+.start-hero { text-align: center; max-width: 760px; margin: 16px auto 56px; }
+.start-hero h1 { margin: 24px 0 20px; }
+.start-hero p { color: var(--muted); margin: 0 auto 28px; font-size: 18px; }
+.hero-icon { width: 48px; height: 48px; color: var(--accent); }
+.capture-tips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.capture-tips h2 { font-size: 20px; margin-top: 20px; }
+.capture-tips svg { width: 28px; height: 28px; color: var(--accent); }
+.capture-tips p, .camera-page header p { color: var(--muted); }
+.privacy-note { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 36px auto 12px; text-align: center; }
+.privacy-note svg { width: 22px; height: 22px; flex-shrink: 0; }
+.flow-disclaimer { text-align: center; color: var(--muted); font-size: 12px; margin: 0 auto; }
+.camera-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 24px; margin-top: 32px; align-items: start; }
+.camera-page .quality-banner { position: static; margin: 20px 0; background: #faf7f1; border-color: var(--border); }
+.live-panel .canvas-wrap { border-radius: 18px; overflow: hidden; }
+.camera-layout progress { display: block; width: 100%; accent-color: var(--progress); margin: 16px 0; }
+.camera-layout .ui-card > .ui-button { width: 100%; }
+@media (max-width: 800px) { .camera-layout, .capture-tips { grid-template-columns: 1fr; } .start-hero { margin-bottom: 32px; } }

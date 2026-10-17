@@ -1,94 +1,44 @@
 import "@testing-library/jest-dom/vitest";
-import { useEffect } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { frameFixture, reportFixture } from "./protocol/fixtures";
-import type { Report } from "./protocol/types";
 import App from "./App";
-
-const state = vi.hoisted(() => ({ report: null as Report | null, mounts: 0, clearReport: () => {} }));
-vi.mock("./stream/useSkinStream", () => ({
-  useSkinStream: () => {
-    useEffect(() => { state.mounts += 1; }, []);
-    return ({
-    bitmapRef: { current: null },
-    headerRef: { current: frameFixture },
-    displayHeaderRef: { current: frameFixture },
-    header: frameFixture,
-    report: state.report,
-    health: null,
-    connection: "connected",
-    error: null,
-    sendReset: vi.fn(),
-    clearReport: state.clearReport,
-  }); },
-}));
-vi.mock("./components/StatusBar", () => ({ StatusBar: () => <div>Pipeline status</div> }));
-vi.mock("./components/LiveView", () => ({ LiveView: () => <div>Camera view</div> }));
-
-vi.mock("./settings/SettingsPage", () => ({
-  SettingsPage: ({ onInputChanged }: { onInputChanged: () => void }) =>
-    <div>Camera input settings<button onClick={onInputChanged}>Simulate input switch</button></div>,
-}));
-afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
-
-it("freezes only the report and restores the latest report when unfrozen", () => {
-  state.report = reportFixture;
-  const { rerender } = render(<App />);
-  const freeze = screen.getByRole("checkbox", { name: "Freeze report" });
-  fireEvent.click(freeze);
-  state.report = { ...reportFixture, disclaimer: "Latest disclaimer" };
-  rerender(<App />);
-  expect(screen.getByText(reportFixture.disclaimer)).toBeVisible();
-  expect(screen.queryByText("Latest disclaimer")).toBeNull();
-  expect(screen.getByRole("status")).toHaveTextContent("Report frozen");
-  fireEvent.click(freeze);
-  expect(screen.getByText("Latest disclaimer")).toBeVisible();
+import { frameFixture, reportFixture } from './protocol/fixtures';
+const mocks = vi.hoisted(() => ({ reset: vi.fn(), clear: vi.fn() }));
+vi.mock('./stream/useSkinStream', () => ({ useSkinStream: () => ({
+  bitmapRef: { current: null }, headerRef: { current: null }, displayHeaderRef: { current: null },
+  header: null, report: null, health: null, connection: 'connected', error: null,
+  sendReset: mocks.reset, clearReport: mocks.clear,
+}) }));
+vi.mock('./flow/CameraPage', () => ({ CameraPage: ({ onCapture }: { onCapture: (s: unknown) => void }) =>
+  <button onClick={() => onCapture({ image: document.createElement('canvas'), header: frameFixture, report: reportFixture, width: 1280, height: 720, capturedAt: 0 })}>Capture test image</button> }));
+vi.mock('./settings/SettingsPage', () => ({ SettingsPage: ({ onInputChanged }: { onInputChanged: () => void }) => <button onClick={onInputChanged}>Change input</button> }));
+vi.mock('./flow/ResultsPage', () => ({ ResultsPage: ({ onContinue }: { onContinue: () => void }) => <button onClick={onContinue}>See treatments</button> }));
+afterEach(() => { cleanup(); history.replaceState(null, '', '/'); vi.clearAllMocks(); });
+it('opens Start and navigates to the Camera step', () => {
+  render(<App />); expect(screen.getByRole('heading', { name: /take a look/ })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Start analyzing' }));
+  expect(location.hash).toBe('#camera');
+  expect(screen.getByText('Camera', { selector: '.ui-stepper__label' }).closest('li')).toHaveAttribute('aria-current', 'step');
 });
-
-it("disables freezing until the first report arrives", () => {
-  state.report = null;
-  render(<App />);
-  expect(screen.getByRole("checkbox", { name: "Freeze report" })).toBeDisabled();
+it.each(['results', 'treatments'])('redirects direct #%s visits', route => {
+  history.replaceState(null, '', `/#${route}`); render(<App />);
+  expect(screen.getByRole('heading', { name: /take a look/ })).toBeVisible();
 });
-
-it("switches tabs with arrow keys and preserves dashboard content", () => {
-  render(<App />);
-  const mounts = state.mounts;
-  const dashboard = screen.getByRole("tab", { name: "Dashboard" });
-  fireEvent.keyDown(dashboard, { key: "ArrowRight" });
-  const settings = screen.getByRole("tab", { name: "Settings" });
-  expect(settings).toHaveFocus();
-  expect(settings).toHaveAttribute("aria-selected", "true");
-  expect(window.location.hash).toBe("#settings");
-  expect(screen.getByRole("tabpanel", { name: "Settings" })).toHaveTextContent("Camera input settings");
-  expect(screen.getByText("Camera view")).not.toBeVisible();
-  fireEvent.keyDown(settings, { key: "ArrowLeft" });
-  expect(dashboard).toHaveFocus();
-  expect(screen.getByText("Camera view")).toBeVisible();
-  expect(state.mounts).toBe(mounts);
+it('opens Settings via header navigation and accepts the settings hash', async () => {
+  render(<App />); fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+  expect(await screen.findByRole('button', { name: 'Change input' })).toBeVisible();
+  expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+  fireEvent.click(screen.getByRole('button', { name: 'Change input' })); expect(mocks.clear).toHaveBeenCalledOnce();
 });
-
-it("opens settings from the hash and responds to hash navigation", () => {
-  window.history.replaceState(null, "", "/#settings");
-  render(<App />);
-  expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
-  window.history.replaceState(null, "", "/");
-  fireEvent(window, new Event("hashchange"));
-  expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute("aria-selected", "true");
+it('opens a legacy settings bookmark', async () => {
+  history.replaceState(null, '', '/#settings'); render(<App />);
+  expect(await screen.findByRole('button', { name: 'Change input' })).toBeVisible();
 });
-
-it("clears the live report and any frozen snapshot after the input changes", () => {
-  state.report = reportFixture;
-  state.clearReport = vi.fn(() => { state.report = null; });
-  const { rerender } = render(<App />);
-  fireEvent.click(screen.getByRole("checkbox", { name: "Freeze report" }));
-  fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
-  fireEvent.click(screen.getByRole("button", { name: "Simulate input switch" }));
-  rerender(<App />);
-  expect(state.clearReport).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByRole("tab", { name: "Dashboard" }));
-  expect(screen.getByRole("checkbox", { name: "Freeze report" })).not.toBeChecked();
-  expect(screen.queryByText(reportFixture.disclaimer)).toBeNull();
-  expect(screen.getByText("Awaiting report disclaimer.")).toBeVisible();
+it('restarts from treatments, clearing report and resetting tracking', () => {
+  render(<App />); fireEvent.click(screen.getByRole('button', { name: 'Start analyzing' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Capture test image' }));
+  fireEvent.click(screen.getByRole('button', { name: 'See treatments' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Start a new analysis' }));
+  expect(mocks.reset).toHaveBeenCalledOnce(); expect(mocks.clear).toHaveBeenCalledOnce();
+  expect(screen.getByRole('heading', { name: /take a look/ })).toBeVisible();
 });
