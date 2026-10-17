@@ -24,18 +24,20 @@ export function useScan(stream: SkinStream, onCapture: (snapshot: AnalysisSnapsh
         setError('We lost a clear view of your face. Adjust your position and try again.');
         window.clearInterval(timer); setStarted(null); return;
       }
-      if (good && current.bitmapRef.current && header) {
+      const displayHeader = current.displayHeaderRef.current;
+      const displayGood = !!displayHeader?.face && displayHeader.quality?.ok === true;
+      if (good && displayGood && current.bitmapRef.current && displayHeader) {
         const image = document.createElement('canvas');
-        image.width = header.width; image.height = header.height;
+        image.width = displayHeader.width; image.height = displayHeader.height;
         try {
           const ctx = image.getContext('2d');
-          if (ctx) { ctx.drawImage(current.bitmapRef.current, 0, 0); frame = { image, header: structuredClone(header) }; }
+          if (ctx) { ctx.drawImage(current.bitmapRef.current, 0, 0); frame = { image, header: structuredClone(displayHeader) }; }
         } catch { /* A replaced bitmap can be retried on the next poll. */ }
       }
       setProgress(Math.min(1, elapsed / 3000));
       const fresh = current.report && current.report !== initialReport.current;
       if (elapsed < 3000 || (!fresh && elapsed < 6000) || (!good && elapsed < 6000)) return;
-      const snapshot = (good && captureSnapshot(current.bitmapRef.current, current.headerRef.current, current.report)) ||
+      const snapshot = (good && displayGood && captureSnapshot(current.bitmapRef.current, current.displayHeaderRef.current, current.report)) ||
         (frame && captureSnapshot(frame.image as unknown as ImageBitmap, frame.header, current.report));
       window.clearInterval(timer);
       setStarted(null);

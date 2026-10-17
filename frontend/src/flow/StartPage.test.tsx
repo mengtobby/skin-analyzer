@@ -8,6 +8,6 @@ it('explains preparation, privacy and cosmetic guidance before starting', () => 
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Let's take a look at your skin");
   expect(screen.getByText(/arm's length/)).toBeVisible();
   expect(screen.getByText(/never saved/)).toBeVisible();
-  expect(screen.getByText(/not a medical diagnosis/)).toBeVisible();
+  expect(screen.getByText('Cosmetic guidance only - not a medical diagnosis. Seek professional advice for persistent, painful or changing skin concerns.', { exact: true })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Start analyzing' })); expect(start).toHaveBeenCalledOnce();
 });
