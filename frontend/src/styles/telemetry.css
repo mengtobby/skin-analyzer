@@ -127,10 +127,10 @@ th:first-child {
   color: var(--accent);
 }
 .severity-moderate {
-  color: #ffb703;
+  color: #8b5b12;
 }
 .severity-notable {
-  color: #ff8096;
+  color: #b63752;
 }
 .insight-card p, .insight-card li, .product-card p {
   font-size: 14px;

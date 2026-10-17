@@ -1,0 +1,4 @@
+.ui-card { min-width: 0; padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+.ui-card__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.ui-card__header h2 { min-width: 0; }
+@media (max-width: 640px) { .ui-card { padding: 20px; } .ui-card__header { flex-wrap: wrap; } }
