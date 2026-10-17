@@ -21,10 +21,18 @@ it("shows connecting and no-face states and exposes overlay and reset controls",
     bitmapRef: { current: null }, headerRef: { current: null }, sendReset,
   };
   const { rerender } = render(<LiveView {...props} header={null} connection="connecting" />);
+  expect(screen.getByRole("heading", { name: "Live analysis" })).toBeVisible();
+  expect(screen.queryByText("Awaiting frames")).not.toBeInTheDocument();
+  const wrapper = screen.getByLabelText("Live camera with skin detection overlays").parentElement;
+  expect(wrapper).not.toHaveAttribute("data-frame-id");
   expect(screen.getByText("Connecting to camera...")).toBeVisible();
   expect(screen.getByRole("button", { name: "Reset tracking" })).toBeDisabled();
   const header = { ...frameFixture, face: null };
   rerender(<LiveView {...props} header={header} connection="connected" />);
+  expect(screen.queryByText(/^Frame \d+$/)).not.toBeInTheDocument();
+  expect(wrapper).toHaveAttribute("data-frame-id", String(header.frame_id));
+  rerender(<LiveView {...props} header={{ ...header, frame_id: header.frame_id + 1 }} connection="connected" />);
+  expect(wrapper).toHaveAttribute("data-frame-id", String(header.frame_id + 1));
   expect(screen.getByText(/No face detected - centre/)).toBeVisible();
   const toggle = screen.getByRole("checkbox", { name: "Show detection overlay" });
   expect(toggle).not.toBeChecked();

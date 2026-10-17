@@ -1,0 +1,269 @@
+{
+  "generated_at": 1791900000.0,
+  "face_detected": true,
+  "findings": [
+    {
+      "condition": "post_inflammatory_erythema",
+      "title": "Post-inflammatory erythema",
+      "severity": "moderate",
+      "score": 0.4761005478659621,
+      "count": 1,
+      "zones": [
+        "right_cheek"
+      ],
+      "evidence": "1 red mark tracked on right cheek; Redness index 46/100 across the face"
+    },
+    {
+      "condition": "inflammatory_acne",
+      "title": "Inflammatory acne",
+      "severity": "moderate",
+      "score": 0.4744183089432228,
+      "count": 2,
+      "zones": [
+        "left_cheek",
+        "chin"
+      ],
+      "evidence": "2 inflamed lesions tracked (1 papule, 1 pustule) on left cheek, chin"
+    },
+    {
+      "condition": "hyperpigmentation",
+      "title": "Hyperpigmentation",
+      "severity": "moderate",
+      "score": 0.424000049863682,
+      "count": 1,
+      "zones": [
+        "forehead"
+      ],
+      "evidence": "1 area of hyperpigmentation tracked on forehead; Pigmentation index 34/100 across the face"
+    }
+  ],
+  "insights": [
+    {
+      "condition": "post_inflammatory_erythema",
+      "title": "Post-inflammatory erythema",
+      "summary": "Flat red marks can persist after inflammation; they are not necessarily active acne.",
+      "mechanisms": [
+        "Residual superficial vascular changes can follow inflammation.",
+        "Barrier irritation can prolong visible redness."
+      ],
+      "contributing_factors": [
+        "Picking and friction can sustain inflammation.",
+        "UV exposure and over-exfoliation can worsen recovery."
+      ],
+      "zone_notes": [
+        "Right cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis."
+      ],
+      "see_a_professional": "Seek advice for persistent or worsening redness, pain, or recurring flushing that could suggest rosacea."
+    },
+    {
+      "condition": "inflammatory_acne",
+      "title": "Inflammatory acne",
+      "summary": "Tracked raised inflammatory features may be compatible with acne; the camera cannot confirm a diagnosis.",
+      "mechanisms": [
+        "Sebum and follicular hyperkeratinisation can block pilosebaceous follicles.",
+        "Cutibacterium (formerly Propionibacterium) acnes and immune inflammation contribute to inflamed lesions."
+      ],
+      "contributing_factors": [
+        "Occlusive products and repeated friction can worsen susceptible skin.",
+        "Androgen sensitivity and genetic predisposition can contribute; hygiene alone does not explain acne."
+      ],
+      "zone_notes": [
+        "Left cheek: phone contact, pillowcase friction and irritating products may contribute; these are possibilities, not a diagnosis.",
+        "Chin/jawline: follicles can be androgen-sensitive; hormonal influence is possible but cannot be inferred from location alone."
+      ],
+      "see_a_professional": "Seek a dermatologist for painful nodules or cysts, scarring, or persistent acne."
+    },
+    {
+      "condition": "hyperpigmentation",
+      "title": "Hyperpigmentation",
+      "summary": "Uneven darker areas can follow inflammation or sun exposure; a camera cannot distinguish benign spots from concerning lesions.",
+      "mechanisms": [
+        "Inflammation may stimulate excess melanin production.",
+        "UV exposure can increase melanin and prolong discoloration."
+      ],
+      "contributing_factors": [
+        "Picking or irritating treatments can leave persistent pigment changes.",
+        "Sun exposure and hormonal influences may contribute; appearance alone cannot establish the cause."
+      ],
+      "zone_notes": [
+        "Forehead: hair products, fringe occlusion and headwear can contribute to irritation or follicular blockage; location alone does not establish a cause."
+      ],
+      "see_a_professional": "Changing or irregular pigmented spots need prompt assessment: ABCDE means asymmetry, border irregularity, color variation, diameter and evolution; melanoma can also be small."
+    }
+  ],
+  "ingredients": [
+    {
+      "id": "azelaic_acid",
+      "name": "Azelaic acid",
+      "score": 1.0,
+      "rationale": "Post-inflammatory erythema: May support acne-related marks; redness response varies.; Inflammatory acne: Supports acne and residual marks.; Hyperpigmentation: Helps post-inflammatory uneven tone.",
+      "cautions": [
+        "Temporary stinging can occur; start slowly.",
+        "Introduce one new active at a time and stop if persistent irritation occurs."
+      ]
+    },
+    {
+      "id": "sunscreen_spf30",
+      "name": "Broad-spectrum sunscreen SPF 30+",
+      "score": 0.8141198775497651,
+      "rationale": "Post-inflammatory erythema: Limits UV-related discoloration during recovery.; Hyperpigmentation: Limits UV-driven darkening.",
+      "cautions": [
+        "Apply generously and reapply per label; patch test sensitive skin.",
+        "Introduce one new active at a time and stop if persistent irritation occurs."
+      ]
+    },
+    {
+      "id": "niacinamide",
+      "name": "Niacinamide",
+      "score": 0.6969780816877174,
+      "rationale": "Post-inflammatory erythema: Supports barrier recovery.; Inflammatory acne: Supports the barrier during acne care.; Hyperpigmentation: May reduce uneven pigmentation.",
+      "cautions": [
+        "High concentrations can sting sensitive skin.",
+        "Introduce one new active at a time and stop if persistent irritation occurs."
+      ]
+    },
+    {
+      "id": "benzoyl_peroxide",
+      "name": "Benzoyl peroxide",
+      "score": 0.45306470409728183,
+      "rationale": "Inflammatory acne: Targets inflammatory acne-associated bacteria.",
+      "cautions": [
+        "May irritate skin and bleach fabrics.",
+        "Introduce one new active at a time and stop if persistent irritation occurs."
+      ]
+    },
+    {
+      "id": "salicylic_acid",
+      "name": "Salicylic acid (BHA)",
+      "score": 0.4077582336875537,
+      "rationale": "Inflammatory acne: Helps follicular blockage.",
+      "cautions": [
+        "May dry or sting; avoid with salicylate allergy.",
+        "Introduce one new active at a time and stop if persistent irritation occurs."
+      ]
+    },
+    {
+      "id": "adapalene",
+      "name": "Adapalene",
+      "score": 0.38510499848268953,
+      "rationale": "Inflammatory acne: Helps prevent blocked follicles.",
+      "cautions": [
+        "Avoid in pregnancy or when planning pregnancy; introduce gradually.",
+        "Introduce one new active at a time and stop if persistent irritation occurs."
+      ]
+    }
+  ],
+  "products": [
+    {
+      "id": "eltamd_clear",
+      "name": "UV Clear Broad-Spectrum SPF 46",
+      "brand": "EltaMD",
+      "category": "sunscreen",
+      "routine": "AM",
+      "key_actives": [
+        "Broad-spectrum SPF 46",
+        "Niacinamide"
+      ],
+      "score": 1.162608918393624,
+      "rationale": "Ingredient options targeting Post-inflammatory erythema, Inflammatory acne, Hyperpigmentation.",
+      "targets": [
+        "post_inflammatory_erythema",
+        "inflammatory_acne",
+        "hyperpigmentation"
+      ]
+    },
+    {
+      "id": "ordinary_azelaic",
+      "name": "Azelaic Acid Suspension 10%",
+      "brand": "The Ordinary",
+      "category": "treatment",
+      "routine": "AM/PM",
+      "key_actives": [
+        "Azelaic acid 10%"
+      ],
+      "score": 1.0,
+      "rationale": "Ingredient options targeting Post-inflammatory erythema, Inflammatory acne, Hyperpigmentation.",
+      "targets": [
+        "post_inflammatory_erythema",
+        "inflammatory_acne",
+        "hyperpigmentation"
+      ]
+    },
+    {
+      "id": "cerave_sa",
+      "name": "Renewing SA Cleanser",
+      "brand": "CeraVe",
+      "category": "cleanser",
+      "routine": "AM/PM",
+      "key_actives": [
+        "Salicylic acid",
+        "Ceramides",
+        "Niacinamide"
+      ],
+      "score": 0.9008571985314942,
+      "rationale": "Ingredient options targeting Post-inflammatory erythema, Inflammatory acne, Hyperpigmentation.",
+      "targets": [
+        "post_inflammatory_erythema",
+        "inflammatory_acne",
+        "hyperpigmentation"
+      ]
+    },
+    {
+      "id": "anthelios",
+      "name": "Anthelios Melt-in Milk Sunscreen SPF 60",
+      "brand": "La Roche-Posay",
+      "category": "sunscreen",
+      "routine": "AM",
+      "key_actives": [
+        "Broad-spectrum SPF 60"
+      ],
+      "score": 0.8141198775497651,
+      "rationale": "Ingredient options targeting Post-inflammatory erythema, Hyperpigmentation.",
+      "targets": [
+        "post_inflammatory_erythema",
+        "hyperpigmentation"
+      ]
+    },
+    {
+      "id": "cerave_retinol",
+      "name": "Resurfacing Retinol Serum",
+      "brand": "CeraVe",
+      "category": "serum",
+      "routine": "PM",
+      "key_actives": [
+        "Retinol",
+        "Ceramides",
+        "Niacinamide"
+      ],
+      "score": 0.6969780816877174,
+      "rationale": "Ingredient options targeting Post-inflammatory erythema, Inflammatory acne, Hyperpigmentation.",
+      "targets": [
+        "post_inflammatory_erythema",
+        "inflammatory_acne",
+        "hyperpigmentation"
+      ]
+    },
+    {
+      "id": "ordinary_niacinamide",
+      "name": "Niacinamide 10% + Zinc 1%",
+      "brand": "The Ordinary",
+      "category": "serum",
+      "routine": "AM/PM",
+      "key_actives": [
+        "Niacinamide 10%",
+        "Zinc PCA"
+      ],
+      "score": 0.6969780816877174,
+      "rationale": "Ingredient options targeting Post-inflammatory erythema, Inflammatory acne, Hyperpigmentation.",
+      "targets": [
+        "post_inflammatory_erythema",
+        "inflammatory_acne",
+        "hyperpigmentation"
+      ]
+    }
+  ],
+  "warnings": [
+    "Retinoids: avoid in pregnancy or when planning pregnancy."
+  ],
+  "disclaimer": "Cosmetic guidance only \u2014 not a medical diagnosis. Camera-based analysis is approximate; consult a dermatologist for persistent, painful or changing lesions. Products are examples of formulations containing the suggested ingredients, not endorsements."
+}
