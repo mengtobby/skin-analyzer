@@ -1,0 +1,11 @@
+.ui-stepper ol { display: flex; gap: 12px; list-style: none; margin: 0; padding: 0; }
+.ui-stepper li { flex: 1; min-width: 0; color: var(--muted); }
+.ui-stepper [aria-current='step'] { color: var(--text); font-weight: 600; }
+.ui-stepper__label { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: 14px; line-height: 24px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; }
+button.ui-stepper__label:hover { color: var(--progress); background: transparent; }
+.ui-stepper__marker { display: flex; align-items: center; height: 16px; }
+.ui-stepper__marker > span { width: 5px; height: 5px; border-radius: 50%; background: var(--progress); }
+.ui-stepper__segment { display: block; height: 6px; border-radius: var(--radius-pill); background: #e7e8ec; overflow: hidden; }
+.ui-stepper__segment > span { display: block; height: 100%; border-radius: inherit; background: var(--progress); transition: width 300ms ease-out; }
+@media (max-width: 640px) { .ui-stepper ol { gap: 8px; } .ui-stepper__label { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .ui-stepper__segment > span { transition: none; } }

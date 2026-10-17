@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+  --bg: #f7f6f4;
+  --surface: #fff;
+  --border: #ebe8e3;
+  --text: #1d1b19;
+  --muted: #75716b;
+  --accent: #d4471f;
+  --progress: #2563eb;
+  --radius-card: 24px;
+  --radius-pill: 999px;
+  --shadow-card: 0 8px 28px rgb(29 27 25 / 4%);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --font-sans: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --focus-ring: 0 0 0 3px rgb(37 99 235 / 25%);
+  --background: var(--bg);
+  --panel: var(--surface);
+}
