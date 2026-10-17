@@ -31,9 +31,18 @@ cd backend
 
 The app checks every analysed frame for brightness, even lighting, face size and head pose. When a frame isn't usable, analysis pauses and the live view says what to fix (for example *Too dark — face a window or lamp*), rather than reporting shadows as skin findings.
 
+## Using the guided analysis
+
+1. **Start:** review the lighting and positioning tips, then select **Start analyzing**.
+2. **Camera:** wait for a face and passing capture quality, then select **Analyze my skin**. Hold still for the three-second scan; you can cancel at any time. The app waits briefly for a fresh report before continuing.
+3. **Results:** select a highlighted blemish to explore its cosmetic guidance. Retake the image or continue to treatments.
+4. **Treatments:** review suggested ingredients and morning/evening routines. **Start a new analysis** clears the capture and findings and resets tracking.
+
+Use the progress bar to revisit completed steps. Your captured image stays in memory only, until replaced, cleared or the page is closed; it is never saved to disk. Changing the input in Settings clears the capture and report.
+
 ## Settings
 
-Open the dashboard's **Settings** tab to choose a local camera or enter a phone/network stream URL (HTTP, HTTPS or RTSP). Switching inputs discards current findings, tracks and scores. The choice is saved to `~/.skin-analyzer/settings.json` and restored on restart. `--source` (including `start.ps1 -Source`) and `SKIN_SOURCE` override the saved choice; the command-line flag wins over the environment. Set `SKIN_SETTINGS_FILE` to use a different settings file. A phone URL with a password is stored in that file in plain text. The Settings tab starts with camera input and can accommodate more sections later.
+Open **Settings** in the header to choose a local camera or enter a phone/network stream URL (HTTP, HTTPS or RTSP). Switching inputs discards current findings, tracks and scores. The choice is saved to `~/.skin-analyzer/settings.json` and restored on restart. `--source` (including `start.ps1 -Source`) and `SKIN_SOURCE` override the saved choice; the command-line flag wins over the environment. Set `SKIN_SETTINGS_FILE` to use a different settings file. A phone URL with a password is stored in that file in plain text. Settings is its own page, separate from the analysis flow.
 
 ## How it works
 
@@ -142,7 +151,7 @@ backend/skin_analyzer/
   capture/         threaded camera / video sources
   pipeline/        frame analyzer, runner thread, wire protocol
   api/             FastAPI app (REST + WebSocket, origin-locked)
-frontend/src/      React dashboard (live overlay, telemetry, insights, recommendations)
+frontend/src/      React guided analysis (Start, Camera, Results, Treatments) and Settings
 frontend/e2e/      Playwright end-to-end specs + no-face fixture
 tools/             model training / export
 ```
