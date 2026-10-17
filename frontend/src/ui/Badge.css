@@ -1,0 +1,5 @@
+.ui-badge { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-pill); padding: 4px 10px; font-size: 12px; line-height: 1.5; font-weight: 600; }
+.ui-badge--neutral { background: #f0eeeb; color: #625d57; }
+.ui-badge--accent { background: #fce9e1; color: #ae3514; }
+.ui-badge--success { background: #e9f3ec; color: #28724c; }
+.ui-badge--warning { background: #fff2d9; color: #80540e; }

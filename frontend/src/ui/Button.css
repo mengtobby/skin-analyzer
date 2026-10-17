@@ -1,0 +1,10 @@
+.ui-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border-radius: var(--radius-pill); font-weight: 600; line-height: 1.4; }
+.ui-button--md { min-height: 44px; padding: 11px 22px; }
+.ui-button--lg { min-height: 54px; padding: 15px 28px; font-size: 16px; }
+.ui-button--primary { color: #fff; background: var(--text); border-color: var(--text); }
+.ui-button--primary:hover:not(:disabled) { background: #393530; border-color: #393530; }
+.ui-button--secondary { background: var(--surface); border-color: var(--border); }
+.ui-button--ghost { background: transparent; border-color: transparent; }
+.ui-button--ghost:hover:not(:disabled), .ui-button--secondary:hover:not(:disabled) { background: #eeece8; }
+.ui-button__icon { display: inline-flex; flex-shrink: 0; }
+.ui-button__icon svg { width: 20px; height: 20px; }

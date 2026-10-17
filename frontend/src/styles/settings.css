@@ -1,13 +1,14 @@
-.app-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-.app-tabs [aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
+.app-tabs { display: flex; gap: 8px; margin-bottom: 32px; padding-bottom: 12px; }
+.app-tabs [aria-selected='true'] { color: var(--text); background: #eeece8; }
 .settings-page { max-width: 800px; display: grid; gap: 24px; }
 .camera-settings fieldset { border: 0; padding: 0; margin: 24px 0; min-width: 0; }
 .camera-settings legend { font-weight: 600; margin-bottom: 12px; }
-.camera-option { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.camera-option { display: flex; align-items: center; gap: 12px; padding: 16px; margin: 8px 0; border: 1px solid var(--border); border-radius: 16px; cursor: pointer; background: var(--surface); }
+.camera-option:has(input:checked) { border-color: var(--accent); background: #fff6f1; }
+.camera-option:has(input:disabled) { opacity: .6; cursor: not-allowed; }
 .camera-scan { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
-.stream-address { margin: 12px 0 0 24px; }
+.stream-address { margin: 16px 0; }
 .stream-address label { display: block; margin-bottom: 8px; }
-.stream-address input { width: 100%; padding: 10px 12px; color: inherit; background: var(--background); border: 1px solid var(--border); border-radius: 6px; }
-.stream-address input::placeholder { color: var(--muted); }
-.camera-settings [role="alert"] { color: #ffb4ab; overflow-wrap: anywhere; }
-.camera-settings [role="status"] { color: var(--accent); overflow-wrap: anywhere; }
+.stream-address input { width: 100%; }
+.camera-settings [role='alert'] { color: #ad321d; overflow-wrap: anywhere; }
+.camera-settings [role='status'] { color: #28724c; overflow-wrap: anywhere; }
