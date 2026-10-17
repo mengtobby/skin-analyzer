@@ -1,14 +1,31 @@
 import type { Ingredient, Product } from "../protocol/types";
 import type { AnalysisSnapshot } from "./snapshot";
-import { Badge, Button, Card, ArrowLeftIcon, RefreshIcon, SunIcon, MoonIcon } from "../ui";
+import { Badge, Button, Card, ArrowLeftIcon, InfoIcon, RefreshIcon, SunIcon, MoonIcon } from "../ui";
 import "./results.css";
 
-function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
+/** The knowledge base joins one sentence per condition with "; " (e.g. "A: x; y.; B: z."),
+ * so split only after a full stop; semicolons inside a sentence stay. */
+function splitRationale(text: string): string[] {
+  return text.split(/(?<=\.);\s*/).map(reason => reason.trim()).filter(Boolean);
+}
+
+/** Cautions every ingredient carries are shown once instead of on each card. */
+function sharedCautions(ingredients: Ingredient[]): string[] {
+  if (ingredients.length < 2) return [];
+  return ingredients[0].cautions.filter(caution => ingredients.every(item => item.cautions.includes(caution)));
+}
+
+function IngredientCard({ ingredient, shared }: { ingredient: Ingredient; shared: string[] }) {
   const score = Math.round(Math.max(0, Math.min(1, ingredient.score)) * 100);
-  return <Card title={ingredient.name}><p>{ingredient.rationale}</p>
+  const reasons = splitRationale(ingredient.rationale);
+  const cautions = ingredient.cautions.filter(caution => !shared.includes(caution));
+  return <Card title={ingredient.name}>
+    {reasons.length > 1
+      ? <ul className="ingredient-reasons">{reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul>
+      : <p>{reasons[0] ?? ingredient.rationale}</p>}
     <div className="ingredient-score"><span>Recommendation match</span><span>{score}%</span></div>
     <progress max={100} value={score} aria-label={`${ingredient.name} recommendation match`} />
-    {ingredient.cautions.map((caution, i) => <p key={i} className="treatment-caution">{caution}</p>)}
+    {cautions.map((caution, i) => <p key={i} className="treatment-caution">{caution}</p>)}
   </Card>;
 }
 
@@ -32,11 +49,14 @@ export function TreatmentsPage({ snapshot, onBack, onRestart }: {
 }) {
   const { report } = snapshot;
   const empty = !report.ingredients.length && !report.products.length;
+  const shared = sharedCautions(report.ingredients);
   return <div className="analysis-results treatments-page">
     <header className="result-heading"><h1>Recommended treatments</h1><p>Cosmetic care suggestions to help you plan your next steps.</p></header>
     {empty && <Card title="No recommendations yet"><p>This capture did not produce ingredient or product suggestions. You can start a new analysis when you are ready.</p></Card>}
-    {!!report.ingredients.length && <section><h2>Key ingredients</h2><div className="ingredient-grid">
-      {report.ingredients.map(ingredient => <IngredientCard key={ingredient.id} ingredient={ingredient} />)}</div></section>}
+    {!!report.ingredients.length && <section><h2>Key ingredients</h2>
+      {shared.map((caution, i) => <p key={i} className="treatment-note"><InfoIcon />{caution}</p>)}
+      <div className="ingredient-grid">
+      {report.ingredients.map(ingredient => <IngredientCard key={ingredient.id} ingredient={ingredient} shared={shared} />)}</div></section>}
     {!!report.products.length && <section><h2>Suggested routine</h2><div className="treatment-routines">
       <Routine products={report.products} morning /><Routine products={report.products} morning={false} /></div></section>}
     {!!report.warnings.length && <aside className="result-callout" aria-label="Routine warnings"><h2>A little care goes a long way</h2>

@@ -44,3 +44,21 @@ it("explains an empty routine when only morning products are suggested", () => {
   render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
   expect(within(screen.getByRole("region", { name: "Evening routine" })).getByText("No products suggested for this routine.")).toBeVisible();
 });
+
+it("lists multi-condition rationales separately and shows shared cautions once", () => {
+  const s = snapshot();
+  const general = "Introduce one new active at a time and stop if persistent irritation occurs.";
+  s.report.ingredients = [
+    { id: "azelaic", name: "Azelaic acid", score: 0.9, cautions: ["Temporary stinging can occur.", general],
+      rationale: "Post-inflammatory erythema: May support marks; redness varies.; Inflammatory acne: Supports acne." },
+    { id: "niacinamide", name: "Niacinamide", score: 0.7, cautions: [general],
+      rationale: "Hyperpigmentation: May reduce uneven pigmentation." },
+  ];
+  render(<TreatmentsPage snapshot={s} onBack={vi.fn()} onRestart={vi.fn()} />);
+  const azelaic = screen.getByRole("heading", { name: "Azelaic acid" }).closest("section")!;
+  const reasons = within(azelaic).getAllByRole("listitem").map((item) => item.textContent);
+  expect(reasons).toEqual(["Post-inflammatory erythema: May support marks; redness varies.", "Inflammatory acne: Supports acne."]);
+  expect(screen.queryByText(/\.;/)).toBeNull();
+  expect(screen.getAllByText(general)).toHaveLength(1);
+  expect(within(azelaic).getByText("Temporary stinging can occur.")).toBeVisible();
+});

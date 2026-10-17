@@ -42,3 +42,17 @@ it('restarts from treatments, clearing report and resetting tracking', () => {
   expect(mocks.reset).toHaveBeenCalledOnce(); expect(mocks.clear).toHaveBeenCalledOnce();
   expect(screen.getByRole('heading', { name: /take a look/ })).toBeVisible();
 });
+
+const currentSegmentWidth = () => {
+  const step = document.querySelector('[aria-current="step"] .ui-stepper__segment span') as HTMLElement;
+  return parseFloat(step.style.width);
+};
+it('shows the current step as partly filled on Start and Results', () => {
+  render(<App />);
+  expect(currentSegmentWidth()).toBeGreaterThan(0);
+  expect(currentSegmentWidth()).toBeLessThan(100);
+  fireEvent.click(screen.getByRole('button', { name: 'Start analyzing' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Capture test image' }));
+  expect(currentSegmentWidth()).toBeGreaterThan(0);
+  expect(currentSegmentWidth()).toBeLessThan(100);
+});

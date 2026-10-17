@@ -98,3 +98,27 @@ it.each([false, true])('pairs snapshot pixels with the decoded header (fallback:
   expect(onCapture.mock.calls[0][0].header).toEqual(displayed);
   expect(onCapture.mock.calls[0][0].header).not.toEqual(s.headerRef.current);
 });
+it('resets the reported progress when a scan aborts', () => {
+  const s = stream(); const onProgress = vi.fn();
+  render(<CameraPage stream={s} onCapture={vi.fn()} onProgress={onProgress} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  act(() => vi.advanceTimersByTime(500));
+  expect(onProgress).toHaveBeenLastCalledWith(expect.any(Number));
+  expect(onProgress.mock.lastCall![0]).toBeGreaterThan(0);
+  s.headerRef.current = { ...s.header!, face: null };
+  act(() => vi.advanceTimersByTime(1700));
+  expect(screen.getByRole('alert')).toHaveTextContent('lost a clear view');
+  expect(onProgress).toHaveBeenLastCalledWith(0);
+});
+it('copies a frame only when a new frame arrives, into one reused canvas', () => {
+  const s = stream(); const create = vi.spyOn(document, 'createElement');
+  render(<CameraPage stream={s} onCapture={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  const canvases = () => create.mock.calls.filter(([tag]) => tag === 'canvas').length;
+  act(() => vi.advanceTimersByTime(1000));
+  expect(canvases()).toBe(1);
+  const next = { ...s.header!, frame_id: s.header!.frame_id + 1 };
+  s.headerRef.current = next; s.displayHeaderRef.current = next;
+  act(() => vi.advanceTimersByTime(1000));
+  expect(canvases()).toBe(1);
+});

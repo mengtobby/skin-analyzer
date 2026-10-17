@@ -1,5 +1,3 @@
-.app-tabs { display: flex; gap: 8px; margin-bottom: 32px; padding-bottom: 12px; }
-.app-tabs [aria-selected='true'] { color: var(--text); background: #eeece8; }
 .settings-page { max-width: 800px; display: grid; gap: 24px; }
 .camera-settings fieldset { border: 0; padding: 0; margin: 24px 0; min-width: 0; }
 .camera-settings legend { font-weight: 600; margin-bottom: 12px; }
