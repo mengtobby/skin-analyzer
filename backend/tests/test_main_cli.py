@@ -7,6 +7,7 @@ import pytest
 
 from skin_analyzer import __main__ as cli
 from skin_analyzer.config import Settings
+from skin_analyzer.user_settings import UserSettings, UserSettingsStore
 
 
 @pytest.mark.parametrize("host,expected_host", [("0.0.0.0", "127.0.0.1"),
@@ -83,7 +84,9 @@ def test_browser_launch(monkeypatch, tmp_path, mode, caplog):
     for variable in ("ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"):
         monkeypatch.setenv(variable, str(tmp_path / variable))
     candidate = tmp_path / "ProgramFiles" / "Microsoft/Edge/Application/msedge.exe"
-    monkeypatch.setattr(cli.Path, "is_file", lambda path: mode == "environment" and path == candidate)
+    if mode == "environment":  # a real file instead of patching Path.is_file process-wide
+        candidate.parent.mkdir(parents=True)
+        candidate.touch()
 
     def launch(args, **kwargs):
         launches.append((args, kwargs))
@@ -109,3 +112,36 @@ def test_browser_launch(monkeypatch, tmp_path, mode, caplog):
         assert browsers == ([url] if mode == "launch_error" else [])
         if mode == "launch_error":
             assert "Could not launch Edge" in caplog.text
+
+
+def _run_without_server(monkeypatch, settings, argv):
+    built = []
+    monkeypatch.setattr(Settings, "from_env", lambda: settings)
+    monkeypatch.setattr(sys, "argv", ["skin-analyzer", *argv])
+    monkeypatch.setattr(cli, "ensure_models", lambda path: None)
+    monkeypatch.setattr(cli, "create_app", lambda actual: built.append(actual) or object())
+    monkeypatch.setattr(cli.uvicorn, "run", lambda *args, **kwargs: None)
+    cli.main()
+    return built[0]
+
+
+@pytest.mark.parametrize("argv,env_source,expected", [
+    ([], None, "camera:2"),                               # saved choice restored on launch
+    (["--source", "camera:1"], None, "camera:1"),         # explicit flag wins
+    ([], "camera:3", "camera:3"),                         # SKIN_SOURCE wins
+])
+def test_saved_camera_input_used_only_without_explicit_source(monkeypatch, tmp_path, argv, env_source, expected):
+    settings_file = tmp_path / "settings.json"
+    UserSettingsStore(settings_file).save(UserSettings(source="camera:2"))
+    base = replace(Settings(), settings_file=settings_file, source=env_source or Settings().source)
+    if env_source:
+        monkeypatch.setenv("SKIN_SOURCE", env_source)
+    else:
+        monkeypatch.delenv("SKIN_SOURCE", raising=False)
+    assert _run_without_server(monkeypatch, base, argv).source == expected
+
+
+def test_missing_saved_input_keeps_default(monkeypatch, tmp_path):
+    monkeypatch.delenv("SKIN_SOURCE", raising=False)
+    base = replace(Settings(), settings_file=tmp_path / "absent.json")
+    assert _run_without_server(monkeypatch, base, []).source == Settings().source
