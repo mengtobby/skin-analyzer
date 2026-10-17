@@ -23,6 +23,8 @@ it('requires connection, face and passing quality', () => {
   expect(button()).toBeDisabled();
   rerender(<CameraPage stream={{ ...s, header: { ...s.header!, face: null } }} onCapture={onCapture} />);
   expect(button()).toBeDisabled();
+  expect(screen.getByText('Camera connected - 25 fps', { exact: true })).toBeVisible();
+  expect(screen.getByText('No face detected - centre your face in the camera.', { exact: true })).toBeVisible();
   rerender(<CameraPage stream={{ ...s, header: { ...s.header!, quality: qualityFixture } }} onCapture={onCapture} />);
   expect(button()).toBeDisabled(); expect(screen.getByText('Too dark - face a window or lamp')).toBeVisible();
   rerender(<CameraPage stream={s} onCapture={onCapture} />); expect(button()).toBeEnabled();
@@ -31,7 +33,7 @@ it('counts down and captures using a report received after starting', () => {
   const s = stream(); const onCapture = vi.fn();
   const { rerender } = render(<CameraPage stream={s} onCapture={onCapture} />);
   fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
-  act(() => vi.advanceTimersByTime(1000)); expect(screen.getByRole('status')).toHaveTextContent('2 seconds');
+  act(() => vi.advanceTimersByTime(1000)); expect(screen.getByText('Hold still... 2 seconds', { exact: true })).toBeVisible();
   const fresh = { ...reportFixture, disclaimer: 'Fresh report' };
   rerender(<CameraPage stream={{ ...s, report: fresh }} onCapture={onCapture} />);
   act(() => vi.advanceTimersByTime(2000));
@@ -81,4 +83,18 @@ it('aborts when quality stays poor', () => {
   s.headerRef.current = { ...s.header!, quality: qualityFixture };
   act(() => vi.advanceTimersByTime(1700));
   expect(screen.getByRole('alert')).toHaveTextContent('lost a clear view'); expect(onCapture).not.toHaveBeenCalled();
+});
+
+it.each([false, true])('pairs snapshot pixels with the decoded header (fallback: %s)', fallback => {
+  const s = stream(); const onCapture = vi.fn();
+  const displayed = s.displayHeaderRef.current!;
+  s.headerRef.current = { ...displayed, frame_id: displayed.frame_id + 1, tracks: [] };
+  render(<CameraPage stream={s} onCapture={onCapture} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  act(() => vi.advanceTimersByTime(5900));
+  if (fallback) s.bitmapRef.current = null;
+  act(() => vi.advanceTimersByTime(100));
+  expect(onCapture).toHaveBeenCalledOnce();
+  expect(onCapture.mock.calls[0][0].header).toEqual(displayed);
+  expect(onCapture.mock.calls[0][0].header).not.toEqual(s.headerRef.current);
 });

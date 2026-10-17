@@ -10,6 +10,6 @@ export function StartPage({ onStart }: { onStart: () => void }) {
       <Card><ScanFaceIcon /><h2>A clear view</h2><p>Keep hair off your forehead and remove makeup if possible.</p></Card>
     </div>
     <p className="privacy-note"><ShieldIcon />Your camera image stays on this device and is never saved</p>
-    <p className="flow-disclaimer">Cosmetic guidance only � not a medical diagnosis. Seek professional advice for persistent, painful or changing skin concerns.</p>
+    <p className="flow-disclaimer">Cosmetic guidance only - not a medical diagnosis. Seek professional advice for persistent, painful or changing skin concerns.</p>
   </div>;
 }

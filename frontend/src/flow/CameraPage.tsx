@@ -13,11 +13,11 @@ export function CameraPage({ stream, onCapture, onProgress }: {
   return <div className="camera-page"><header><h1>A moment for your skin</h1><p>Face the camera and settle into even light.</p></header>
     <div className="camera-layout"><LiveView {...stream} headerRef={stream.displayHeaderRef} />
       <Card title="Let's get a clear view">
-        <Badge tone={stream.connection === 'connected' ? 'success' : 'neutral'}>{stream.connection === 'connected' ? 'Camera connected' : 'Reconnecting'}{stream.header ? ` � ${Math.round(stream.header.perf.fps)} fps` : ''}</Badge>
-        <p>{stream.header?.face ? 'Face found. Keep looking straight ahead.' : 'No face detected � centre your face in the camera.'}</p>
+        <Badge tone={stream.connection === 'connected' ? 'success' : 'neutral'}>{stream.connection === 'connected' ? 'Camera connected' : 'Reconnecting'}{stream.header ? ` - ${Math.round(stream.header.perf.fps)} fps` : ''}</Badge>
+        <p>{stream.header?.face ? 'Face found. Keep looking straight ahead.' : 'No face detected - centre your face in the camera.'}</p>
         {stream.header?.quality && !stream.header.quality.ok && <QualityBanner quality={stream.header.quality} />}
         {ready && <p>You're ready. Hold still for a short scan.</p>}
-        {scan.scanning ? <div role="status"><p>Hold still� {scan.progress < 1 ? `${Math.ceil(3 * (1 - scan.progress))} seconds` : 'Finishing your analysis'}</p>
+        {scan.scanning ? <div role="status"><p>Hold still... {scan.progress < 1 ? `${Math.ceil(3 * (1 - scan.progress))} seconds` : 'Finishing your analysis'}</p>
           <progress aria-label="Scan progress" max={1} value={scan.progress} /><Button variant="secondary" onClick={scan.cancel}>Cancel scan</Button></div>
           : <Button size="lg" disabled={!ready} onClick={scan.start}>Analyze my skin</Button>}
         {(scan.error || stream.error) && <p role="alert">{scan.error || stream.error}</p>}
