@@ -1,0 +1,55 @@
+.analysis-results { display: grid; gap: 32px; color: var(--text, #1d1b19); min-width: 0; }
+.analysis-results h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); letter-spacing: -.03em; margin: 0 0 12px; }
+.analysis-results h2 { margin: 0 0 16px; font-size: 1.3rem; }
+.analysis-results h3 { font-size: 1rem; margin: 24px 0 12px; }
+.analysis-results h4 { font-size: 1rem; margin: 16px 0 8px; }
+.analysis-results p, .analysis-results li { line-height: 1.65; overflow-wrap: anywhere; }
+.result-heading p, .result-muted { color: var(--muted, #75716b); }
+.result-heading p { margin: 0; }
+.results-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr); gap: 32px; align-items: start; }
+.blemish-map { position: relative; overflow: hidden; border-radius: 24px; background: #ebe8e3; isolation: isolate; }
+.blemish-map canvas { display: block; width: 100%; height: 100%; }
+.blemish-contour { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.blemish-marker { position: absolute; transform: translate(-50%, -50%); width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer; border-radius: 50%; padding: 12px; }
+.blemish-marker span { display: block; width: 100%; height: 100%; background: currentColor; border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 6px #0005; }
+.blemish-marker::before { content: ""; position: absolute; inset: 7px; border: 2px solid currentColor; border-radius: 50%; animation: blemish-pulse 2.5s ease-out infinite; }
+.blemish-marker[aria-pressed="true"] { outline: 2px solid white; outline-offset: -7px; }
+.blemish-marker:focus-visible, .blemish-list button:focus-visible { outline: 3px solid var(--progress, #2563eb); outline-offset: 3px; }
+.map-error { position: absolute; inset: 12px; margin: 0; color: #1d1b19; }
+.result-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.result-inline h2 { margin: 0; }
+.result-inline svg { width: 24px; height: 24px; }
+.blemish-detail > .result-muted { margin: 0 0 8px; }
+.blemish-measurements { display: flex; flex-wrap: wrap; gap: 32px; padding: 16px 0; border-block: 1px solid var(--border, #ebe8e3); }
+.blemish-measurements dt { color: var(--muted, #75716b); font-size: .875rem; }
+.blemish-measurements dd { margin: 4px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.result-callout { padding: 20px 24px; background: #f7f6f4; border: 1px solid var(--border, #ebe8e3); border-radius: 16px; line-height: 1.65; }
+.result-callout h2 { font-size: 1.1rem; }
+.blemish-list ul { list-style: none; padding: 0; display: grid; gap: 8px; }
+.blemish-list button { display: flex; justify-content: space-between; gap: 16px; width: 100%; text-align: left; padding: 14px 18px; font: inherit; color: inherit; border: 1px solid var(--border, #ebe8e3); background: white; border-radius: 16px; cursor: pointer; }
+.blemish-list button span { color: var(--muted, #75716b); }
+.blemish-list button:hover { background: #f7f6f4; }
+.blemish-list button[aria-pressed="true"] { border-color: var(--progress, #2563eb); background: #eff4ff; }
+.skin-scores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.skin-scores h3 { margin: 0; }
+.skin-score-value { font-size: 2rem; font-weight: 600; margin: 12px 0 4px; font-variant-numeric: tabular-nums; }
+.skin-score-value span { font-size: .875rem; color: var(--muted, #75716b); font-weight: 400; }
+.skin-scores .result-muted { font-size: .875rem; margin: 0; }
+.result-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; border-top: 1px solid var(--border, #ebe8e3); padding-top: 24px; }
+.ingredient-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 24px; }
+.ingredient-score { display: flex; justify-content: space-between; gap: 12px; font-size: .875rem; margin: 20px 0 8px; }
+.analysis-results progress { width: 100%; height: 8px; border: 0; border-radius: 999px; accent-color: var(--progress, #2563eb); overflow: hidden; }
+.analysis-results progress::-webkit-progress-bar { background: #ebe8e3; }
+.analysis-results progress::-webkit-progress-value { background: var(--progress, #2563eb); border-radius: 999px; }
+.treatment-caution { font-size: .875rem; color: #80501f; }
+.treatment-routines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+.treatment-routines h3 { margin-top: 0; }
+.routine-stack { display: grid; gap: 16px; }
+.routine-product h4 { margin-top: 0; }
+.routine-product > .result-muted { margin-top: 0; }
+.active-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+.result-disclaimer { color: var(--muted, #75716b); line-height: 1.65; max-width: 75ch; }
+@keyframes blemish-pulse { from { transform: scale(.8); opacity: .7; } to { transform: scale(1.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .blemish-marker::before { animation: none; opacity: .6; } }
+@media (max-width: 850px) { .results-layout { grid-template-columns: 1fr; } .skin-scores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .treatment-routines { grid-template-columns: 1fr; } .result-actions { flex-direction: column; } .analysis-results { gap: 24px; } }
