@@ -27,6 +27,7 @@ class Settings:
     report_interval_s: float = 1.0
     host: str = "127.0.0.1"
     port: int = 8000
+    dev: bool = False
     extra_origins: tuple[str, ...] = ()
     static_dir: Path = BACKEND.parent / "frontend/dist"
 
@@ -41,6 +42,8 @@ class Settings:
             raise ValueError("invalid detector")
         if self.preprocess not in {"auto", "cpu", "cuda"}:
             raise ValueError("invalid preprocessor")
+        if type(self.dev) is not bool:
+            raise ValueError("dev must be boolean")
         if type(self.mirror) is not bool:
             raise ValueError("mirror must be boolean")
         if type(self.jpeg_quality) is not int or not 1 <= self.jpeg_quality <= 100:
@@ -67,9 +70,11 @@ class Settings:
             except (ValueError, TypeError) as exc:
                 raise ValueError(f"invalid {variable}: {exc}") from exc
             values[key] = value
-        if "SKIN_MIRROR" in os.environ:
-            raw = os.environ["SKIN_MIRROR"].lower()
-            if raw not in {"true", "false", "1", "0", "yes", "no"}:
-                raise ValueError("invalid SKIN_MIRROR")
-            values["mirror"] = raw in {"true", "1", "yes"}
+        for key in ("mirror", "dev"):
+            variable = f"SKIN_{key.upper()}"
+            if variable in os.environ:
+                raw = os.environ[variable].lower()
+                if raw not in {"true", "false", "1", "0", "yes", "no"}:
+                    raise ValueError(f"invalid {variable}")
+                values[key] = raw in {"true", "1", "yes"}
         return cls(**values)
