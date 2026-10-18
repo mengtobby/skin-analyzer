@@ -74,6 +74,20 @@ describe("useSkinStream", () => {
     expect(result.current.error).toBe("Invalid stream message");
   });
 
+  it("clears the live report when the server discards findings", async () => {
+    const { result } = renderHook(() => useSkinStream());
+    const socket = MockSocket.instances[0];
+    await act(async () => {
+      await socket.onmessage?.({ data: JSON.stringify({ type: "report", data: reportFixture }) });
+    });
+    expect(result.current.report).toEqual(reportFixture);
+    await act(async () => {
+      await socket.onmessage?.({ data: '{"type":"report","data":null}' });
+    });
+    expect(result.current.report).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
   it("reconnects with exponential delays capped at 15 seconds", () => {
     const { result } = renderHook(() => useSkinStream());
     for (const delay of [1000, 2000, 4000, 8000, 15000, 15000]) {

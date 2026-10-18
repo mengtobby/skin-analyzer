@@ -9,7 +9,7 @@ interface StreamState {
   socketRef: MutableRefObject<WebSocket | null>;
   setHeader: (header: FrameHeader | null) => void;
   setHealth: (health: Health) => void;
-  setReport: (report: Report) => void;
+  setReport: (report: Report | null) => void;
   setError: (error: string | null) => void;
   setConnection: (connection: Connection) => void;
 }

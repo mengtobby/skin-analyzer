@@ -114,4 +114,4 @@ export interface Envelope<T> {
   data: T | null;
   error: string | null;
 }
-export type ServerMessage = { type: "status"; data: Health } | { type: "report"; data: Report };
+export type ServerMessage = { type: "status"; data: Health } | { type: "report"; data: Report | null };
