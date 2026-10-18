@@ -169,3 +169,30 @@ is eye-corner distance. Yaw and pitch are approximate degrees.
 - `POST /api/settings/source` accepts exactly `{"kind":"camera","index":0}` (integer 0–9) or `{"kind":"url","url":"http://phone:8080/video"}`. URLs must use HTTP, HTTPS or RTSP, contain no whitespace, and be at most 2048 characters. File inputs cannot be selected through this endpoint.
 
 A successful switch returns HTTP 200 with `data: {"source": SourceView, "saved": boolean}` and discards all current findings, tracks and scores. `saved: false` means the live input changed but its preference could not be saved. Raw stream credentials are never returned. Errors use the same envelope with `success: false`, `data: null`, and a friendly `error`: 403 for an untrusted Origin (same policy as reset), 409 for another input change in progress, 422 for invalid input, and 502 when the new input could not be opened.
+
+## Browser security and development
+
+Every `/api/*` HTTP request and `/ws/stream` handshake with
+`Sec-Fetch-Site: cross-site` is rejected before handling: HTTP 403 with
+`{"success":false,"data":null,"error":"Cross-site request blocked"}`, or WebSocket
+close code 1008. Missing metadata and `same-origin`, `same-site`, and `none` pass
+this check; existing Host and Origin restrictions still apply. Camera enumeration
+also rejects a present, untrusted Origin before any camera probe.
+
+Vite origins `http://localhost:5173` and `http://127.0.0.1:5173` are trusted only
+in development mode (`--dev`, or `SKIN_DEV=true`, `1`, or `yes`). Development is
+off by default; `SKIN_DEV=false`, `0`, or `no` disables it. `start.ps1 -Dev`
+passes `--dev`. Explicit extra origins remain supported.
+
+All HTTP responses, including static files and rejections, carry:
+
+- `X-Frame-Options: DENY`
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: no-referrer`
+- `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'`
+
+`POST /api/settings/source` accepts at most 4096 body bytes, including when
+Content-Length is absent or understates the body. An oversized declared or
+received body returns HTTP 413 with the normal error envelope and
+`Request body must be at most 4096 bytes`. Malformed JSON, including excessive
+nesting, returns the friendly invalid-input HTTP 422 envelope.

@@ -145,3 +145,26 @@ def test_missing_saved_input_keeps_default(monkeypatch, tmp_path):
     monkeypatch.delenv("SKIN_SOURCE", raising=False)
     base = replace(Settings(), settings_file=tmp_path / "absent.json")
     assert _run_without_server(monkeypatch, base, []).source == Settings().source
+
+@pytest.mark.parametrize("raw,expected", [("true", True), ("1", True), ("yes", True),
+    ("false", False), ("0", False), ("no", False), ("TRUE", True)])
+def test_dev_environment(monkeypatch, raw, expected):
+    monkeypatch.setenv("SKIN_DEV", raw)
+    assert Settings.from_env().dev is expected
+
+
+def test_dev_default_and_invalid_environment(monkeypatch):
+    monkeypatch.delenv("SKIN_DEV", raising=False)
+    assert Settings.from_env().dev is False
+    monkeypatch.setenv("SKIN_DEV", "maybe")
+    with pytest.raises(ValueError, match="invalid SKIN_DEV"):
+        Settings.from_env()
+    with pytest.raises(ValueError, match="dev must be boolean"):
+        Settings(dev=1)
+
+
+@pytest.mark.parametrize("environment,argv,expected", [(False, [], False),
+    (False, ["--dev"], True), (True, [], True)])
+def test_dev_cli(monkeypatch, tmp_path, environment, argv, expected):
+    settings = replace(Settings(), dev=environment, settings_file=tmp_path / "absent.json")
+    assert _run_without_server(monkeypatch, settings, argv).dev is expected

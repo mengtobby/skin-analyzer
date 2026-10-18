@@ -53,7 +53,7 @@ Push-Location (Join-Path $root "backend")
 try {
     if ($Dev) {
         $vite = Start-Process -FilePath "npm.cmd" -ArgumentList "--prefix", $frontend, "run", "dev" -PassThru -NoNewWindow
-        try { & $venvPy -m skin_analyzer @sourceArgs --port $Port }
+        try { & $venvPy -m skin_analyzer @sourceArgs --port $Port --dev }
         finally { if ($vite -and -not $vite.HasExited) { Stop-Process -Id $vite.Id -Force } }
     } else {
         if (-not (Test-Path (Join-Path $frontend "dist\index.html"))) {

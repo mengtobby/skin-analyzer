@@ -14,8 +14,8 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.datastructures import Headers
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.datastructures import Headers, MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..capture import probe_cameras
 from ..config import Settings
@@ -57,10 +57,44 @@ class _TrustedHostMiddleware:
         await self.app(scope, receive, send)
 
 
+_SECURITY_HEADERS = {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; connect-src 'self' ws: wss:; object-src 'none'; "
+        "base-uri 'self'; frame-ancestors 'none'; form-action 'self'"),
+}
+
+
+class _BrowserSecurityMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        async def secure_send(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers.update(_SECURITY_HEADERS)
+            await send(message)
+
+        protected = (scope["type"] == "http" and scope["path"].startswith("/api/")) or (
+            scope["type"] == "websocket" and scope["path"] == "/ws/stream")
+        if protected and "cross-site" in Headers(scope=scope).getlist("sec-fetch-site"):
+            if scope["type"] == "websocket":
+                await send({"type": "websocket.close", "code": 1008})
+            else:
+                await _settings_error(403, "Cross-site request blocked")(scope, receive, secure_send)
+            return
+        await self.app(scope, receive, secure_send)
+
+
 def _trusted_settings(settings: Settings) -> tuple[set[str], set[str]]:
-    origins = {"http://localhost:5173", "http://127.0.0.1:5173",
-               f"http://localhost:{settings.port}", f"http://127.0.0.1:{settings.port}",
+    origins = {f"http://localhost:{settings.port}", f"http://127.0.0.1:{settings.port}",
                f"http://[::1]:{settings.port}", *settings.extra_origins}
+    if settings.dev:
+        origins.update({"http://localhost:5173", "http://127.0.0.1:5173"})
     hosts = {"localhost", "127.0.0.1", "::1"}
     if settings.host not in {"0.0.0.0", "::"}:  # nosec B104 - wildcard detection, not a bind
         host = settings.host.strip("[]").lower()  # browsers send lowercase origins
@@ -181,6 +215,13 @@ def create_app(settings: Settings | None = None, runner: PipelineRunner | None =
             await asyncio.to_thread(active.close if hasattr(active, "close") else active.stop)
 
     app = FastAPI(lifespan=lifespan)
+    # ServerErrorMiddleware sits outside user middleware, so its responses need headers too.
+    @app.exception_handler(Exception)
+    async def server_error(request: Request, exc: Exception) -> JSONResponse:
+        logger.error("Request failed", exc_info=exc)
+        return JSONResponse(status_code=500, headers=_SECURITY_HEADERS, content={
+            "success": False, "data": None, "error": "Internal server error"})
+
     app.state.settings = settings
     app.state.camera_lock = asyncio.Lock()
     app.state.camera_cache = None
@@ -191,6 +232,7 @@ def create_app(settings: Settings | None = None, runner: PipelineRunner | None =
     app.add_middleware(CORSMiddleware, allow_origins=list(app.state.allowed_origins),
                        allow_methods=["GET", "POST"], allow_headers=["*"])
     app.add_middleware(_TrustedHostMiddleware, trusted_hosts=trusted_hosts)
+    app.add_middleware(_BrowserSecurityMiddleware)
     _register_routes(app)
     if settings.static_dir.is_dir():
         app.mount("/", StaticFiles(directory=str(settings.static_dir), html=True), name="frontend")
@@ -327,8 +369,11 @@ def _register_settings(app: FastAPI) -> None:
     async def settings() -> dict:
         return {"success": True, "data": {"source": _source_view(app.state.runner)}, "error": None}
 
-    @app.get("/api/settings/cameras")
-    async def cameras() -> dict:
+    @app.get("/api/settings/cameras", response_model=None)
+    async def cameras(request: Request) -> dict | JSONResponse:
+        origin = request.headers.get("origin")
+        if origin is not None and origin not in app.state.allowed_origins:
+            return _settings_error(403, "Origin not allowed")
         return {"success": True, "data": {"cameras": await _camera_list(app)}, "error": None}
 
     @app.post("/api/settings/source", response_model=None)
@@ -336,8 +381,20 @@ def _register_settings(app: FastAPI) -> None:
         origin = request.headers.get("origin")
         if origin is not None and origin not in app.state.allowed_origins:
             return _settings_error(403, "Origin not allowed")
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                if int(content_length) > 4096:
+                    return _settings_error(413, "Request body must be at most 4096 bytes")
+            except ValueError:
+                return _settings_error(422, "Invalid Content-Length")
+        body = bytearray()
+        async for chunk in request.stream():
+            if len(body) + len(chunk) > 4096:
+                return _settings_error(413, "Request body must be at most 4096 bytes")
+            body.extend(chunk)
         try:
-            spec = _input_spec(await request.json())
-        except (ValueError, TypeError):
+            spec = _input_spec(json.loads(body))
+        except (ValueError, TypeError, RecursionError):
             return _settings_error(422, "Choose a camera from 0 to 9 or a valid HTTP, HTTPS or RTSP stream address")
         return await _change_source(app, spec)
