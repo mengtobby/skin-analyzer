@@ -1,5 +1,6 @@
 """Cleared findings are versioned and broadcast without opening a camera."""
 from types import SimpleNamespace
+from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,7 +9,7 @@ from skin_analyzer.api.app import create_app
 from skin_analyzer.config import Settings
 from skin_analyzer.knowledge import KnowledgeBase
 from skin_analyzer.pipeline import FrameResult, PipelineRunner
-from .test_api import FakeRunner, ready, stream
+from .test_api import FakeRunner, ready, stream, wait_for
 from .test_source_switch import Source
 
 
@@ -40,8 +41,14 @@ def test_clear_versions_report_and_notifies_outside_locks(action: str) -> None:
 
 
 class ClearableRunner(FakeRunner):
+    def __init__(self) -> None:
+        super().__init__()
+        self.report_read = Event()
+
     def latest_report(self) -> tuple[int, dict | None] | None:
-        return self.report
+        report = self.report
+        self.report_read.set()
+        return report
 
     def reset(self) -> None:
         self.resets += 1
@@ -67,16 +74,33 @@ def test_reset_broadcasts_null_to_all_sessions_and_rest() -> None:
                 assert socket.receive_json() == {"type": "report", "data": None}
             assert client.get("/api/report").json() == {
                 "success": True, "data": None, "error": None}
+            runner.report_read.clear()
+            assert client.post("/api/reset").status_code == 200
+            wait_for(runner.report_read.is_set)
+            runner.report = (runner.report[0] + 1, {"findings": []})
+            runner.notify()
+            for socket in (first, second):
+                assert socket.receive_json() == {"type": "report", "data": {"findings": []}}
 
 
-def test_fresh_session_has_no_spurious_null_report() -> None:
+@pytest.mark.parametrize("clear_when", ["never", "before_connect", "after_connect"])
+def test_fresh_session_has_no_spurious_null_report(clear_when: str) -> None:
     runner = ClearableRunner()
+    if clear_when == "before_connect":
+        runner.report = (1, {"findings": []})
+        runner.reset()
     app = create_app(Settings(), runner)
     with TestClient(app, base_url="http://localhost", headers={"host": "localhost"},
                     client=("127.0.0.1", 50000)) as client:
         with stream(client) as socket:
             ready(socket)
-            runner.report = (1, {"findings": []})
+            wait_for(runner.report_read.is_set)
+            if clear_when == "after_connect":
+                runner.report_read.clear()
+                assert client.post("/api/reset").status_code == 200
+                wait_for(runner.report_read.is_set)
+            version = runner.report[0] if runner.report is not None else 0
+            runner.report = (version + 1, {"findings": []})
             runner.notify()
             # Any spurious initial null would arrive before this first report.
             assert socket.receive_json() == {"type": "report", "data": {"findings": []}}
