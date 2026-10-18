@@ -82,8 +82,9 @@ bytes 4+N..end    JPEG of the display frame (may be empty only if encoding faile
 - On connect: `{"type": "status", "data": Health}`
 - When findings change (normally about once per second): `{"type": "report", "data": Report | null}`.
   `null` is sent immediately when the server discards its findings after a reset or
-  input switch; clients must clear the findings they display. Before any report or
-  clear, a new connection receives no report message.
+  input switch, to sessions currently showing a report; clients must clear the
+  findings they display. Sessions receive no null before their first report or
+  after they have already cleared it, including connections made after a clear.
 
 ### Client → server, text (JSON)
 

@@ -96,6 +96,7 @@ def _health(runner: PipelineRunner) -> dict:
 
 async def _send_stream(socket: WebSocket, runner: PipelineRunner, event: asyncio.Event) -> None:
     packet_version = report_version = 0
+    shown = False
     while True:
         await event.wait()
         event.clear()
@@ -109,8 +110,9 @@ async def _send_stream(socket: WebSocket, runner: PipelineRunner, event: asyncio
         report = runner.latest_report()
         if report is not None and report[0] != report_version:
             report_version, data = report
-            # A versioned null broadcasts discarded findings to every session.
-            await socket.send_json({"type": "report", "data": data})
+            if data is not None or shown:
+                await socket.send_json({"type": "report", "data": data})
+            shown = data is not None
 
 
 async def _receive_stream(socket: WebSocket, runner: PipelineRunner) -> None:
