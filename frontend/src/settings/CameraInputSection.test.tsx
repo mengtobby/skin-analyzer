@@ -135,3 +135,27 @@ it("keeps Apply disabled while a camera scan is running", async () => {
   finish(response({ cameras }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled());
 });
+
+it("does not offer to re-apply the stream address already in use", async () => {
+  render(<CameraInputSection />);
+  await screen.findByText("Camera 1");
+  fireEvent.click(screen.getByLabelText("Phone / network stream"));
+  const input = screen.getByLabelText("Stream URL");
+  fireEvent.change(input, { target: { value: "http://phone:8080/video" } });
+  fetchMock.mockResolvedValueOnce(response({ source: { kind: "url", spec: "url:http://phone:8080/***", camera_index: null }, saved: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  await screen.findByText(/Earlier results were cleared/);
+  fireEvent.change(input, { target: { value: "http://phone:8080/video" } });
+  expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+  fireEvent.change(input, { target: { value: "http://phone:8080/other" } });
+  expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled();
+});
+
+it("explains how a stream password is stored", async () => {
+  render(<CameraInputSection />);
+  await screen.findByText("Camera 1");
+  fireEvent.click(screen.getByLabelText("Phone / network stream"));
+  const help = screen.getByText(/saved encrypted for your account/);
+  expect(help).toHaveTextContent(/elsewhere it is stored in plain text readable only by your user account/i);
+  expect(help).toHaveTextContent(/avoid putting passwords on the command line/i);
+});

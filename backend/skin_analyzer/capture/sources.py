@@ -20,6 +20,8 @@ import numpy as np
 logger = logging.getLogger(__name__)
 CaptureFactory = Callable[..., Any]
 Frame = tuple[np.ndarray, float, int]
+_MIN_SECRET_PIECE = 6
+_URL_PLACEHOLDER = "\x00stream-url\x00"
 
 
 def _configure_ffmpeg_protocols() -> None:
@@ -264,17 +266,25 @@ class NetworkStreamSource(_ThreadedSource):
     @staticmethod
     def _secret_values(username: str | None, password: str | None, path: str,
                        query: str, fragment: str) -> tuple[str, ...]:
-        """Sensitive URL components, raw and decoded, longest first."""
-        raw = [username or "", password or "", fragment, *path.split("/")]
-        raw += [part.partition("=")[2] or part for part in query.split("&")]
+        """Sensitive URL components, raw and decoded, longest first.
+
+        Whole components are always secrets. Individual path segments, query values and
+        the username only count when token-like (>= 6 characters): short pieces such as
+        "/1" or "video" would otherwise mangle unrelated error text like IP addresses.
+        """
+        whole = [password or "", fragment, query, path if path not in ("", "/") else ""]
+        pieces = [username or "", *path.split("/")]
+        pieces += [part.partition("=")[2] or part for part in query.split("&")]
+        raw = whole + [piece for piece in pieces if len(unquote(piece)) >= _MIN_SECRET_PIECE]
         values = {v for item in raw for v in (item, unquote(item)) if v}
         return tuple(sorted(values, key=len, reverse=True))
 
     def _error_text(self, exc: Exception) -> str:
-        error = super()._error_text(exc).replace(self._url, self._safe_url)
+        # Mask the full URL first so secret replacement cannot touch the redacted form.
+        error = super()._error_text(exc).replace(self._url, _URL_PLACEHOLDER)
         for secret in self._secrets:
             error = error.replace(secret, "***")
-        return error
+        return error.replace(_URL_PLACEHOLDER, self._safe_url)
 
     def _stream(self) -> None:
         _configure_ffmpeg_protocols()

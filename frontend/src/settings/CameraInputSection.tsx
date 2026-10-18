@@ -13,6 +13,7 @@ function useCameraInput(onInputChanged?: () => void) {
   const [cameras, updateCameras] = useState<CameraOption[]>([]);
   const [selection, select] = useState("");
   const [url, updateUrl] = useState("");
+  const [appliedUrl, rememberApplied] = useState<string | null>(null);
   const [scanning, scan] = useState(true);
   const [pending, connect] = useState(false);
   const [error, fail] = useState("");
@@ -36,7 +37,8 @@ function useCameraInput(onInputChanged?: () => void) {
     return () => { active = false; };
   }, [scanNumber]);
 
-  const changed = selection === "url" ? validUrl(url) && `url:${url}` !== source?.spec :
+  // The server hides the path, so compare against the address this window last applied.
+  const changed = selection === "url" ? validUrl(url) && url !== appliedUrl && `url:${url}` !== source?.spec :
     selection !== "" && !(source?.kind === "camera" && String(source.camera_index) === selection);
   async function apply() {
     connect(true); fail(""); notify("");
@@ -44,6 +46,7 @@ function useCameraInput(onInputChanged?: () => void) {
       const { source: value, saved } = await setSource(selection === "url" ? { kind: "url", url } :
         { kind: "camera", index: Number(selection) });
       updateSource(value); updateUrl("");
+      rememberApplied(value.kind === "url" && selection === "url" ? url : null);
       select(value.kind === "camera" ? String(value.camera_index) : "url");
       onInputChanged?.();
       notify(`Now using ${sourceLabel(value)}. Earlier results were cleared.` +
@@ -83,7 +86,7 @@ export function CameraInputSection({ onInputChanged }: SettingsSectionProps) {
         <input id="stream-url" type="url" value={url} onChange={(event) => updateUrl(event.target.value)}
           placeholder="http://192.168.1.20:8080/video" aria-describedby="stream-help" autoComplete="off" />
         <p className="muted" id="stream-help">Install an IP-camera app on your phone, connect to the same Wi-Fi,
-          and paste the stream address shown in the app. Use an http, https or rtsp URL. On Windows, a password in the stream address is saved encrypted for your account; avoid putting passwords on the command line.</p>
+          and paste the stream address shown in the app. Use an http, https or rtsp URL. On Windows, a password in the stream address is saved encrypted for your account; elsewhere it is stored in plain text readable only by your user account. Avoid putting passwords on the command line.</p>
       </div>}
     </fieldset>
     <button disabled={pending || scanning || !source || !changed} onClick={() => void apply()}>Apply</button>

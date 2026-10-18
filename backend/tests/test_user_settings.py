@@ -167,3 +167,13 @@ def test_protection_failure_preserves_previous_file(tmp_path, monkeypatch):
         store.save(UserSettings("camera:2"))
     assert store.path.read_text() == original
     assert list(tmp_path.iterdir()) == [store.path]
+
+
+def test_invalid_legacy_plaintext_is_scrubbed_on_windows(tmp_path, monkeypatch):
+    monkeypatch.setattr(user_settings.sys, "platform", "win32")
+    monkeypatch.setattr(user_settings, "_protect", lambda data: b"protected")
+    store = UserSettingsStore(tmp_path / "settings.json")
+    # Non-ASCII paths are rejected by the stricter stream checks, so this never validates.
+    store.path.write_text(json.dumps({"version": 1, "source": "url:http://user:hunter2@host/vid\u00e9o"}))
+    assert store.load() == UserSettings()
+    assert "hunter2" not in store.path.read_text(encoding="utf-8")

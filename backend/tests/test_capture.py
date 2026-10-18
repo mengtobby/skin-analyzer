@@ -464,3 +464,10 @@ def test_camera_probe_read_exception_releases_and_continues():
         return capture
     assert probe_cameras([0, 1], capture_factory=factory) == []
     assert captures and all(capture.released for capture in captures)
+
+
+def test_network_short_path_segments_do_not_garble_errors() -> None:
+    url = "rtsp://cam.local:554/1"
+    source = NetworkStreamSource(url, capture_factory=lambda *args: None)
+    text = source._error_text(RuntimeError(f"Failed {url} from 192.168.1.20 (code 1)"))
+    assert text == "Failed rtsp://cam.local:554/*** from 192.168.1.20 (code 1)"

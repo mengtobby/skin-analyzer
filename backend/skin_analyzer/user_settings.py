@@ -88,7 +88,11 @@ class UserSettingsStore:
                 source = json.loads(_unprotect(protected).decode("utf-8"))
             else:
                 source = data.get("source")
-            settings = UserSettings(_validate_source(source))
+            try:
+                settings = UserSettings(_validate_source(source))
+            except (ValueError, TypeError):
+                self._scrub_plaintext(data)
+                raise
             if sys.platform == "win32" and "source_protected" not in data:
                 try:
                     self.save(settings)
@@ -100,6 +104,15 @@ class UserSettingsStore:
         except (OSError, ValueError, TypeError, UnicodeError):
             logger.warning("Cannot load saved user settings; using defaults")
             return UserSettings()
+
+    def _scrub_plaintext(self, data: dict) -> None:
+        """On Windows, don't leave an unusable plaintext source (maybe with a password) on disk."""
+        if sys.platform != "win32" or "source_protected" in data or data.get("source") is None:
+            return
+        try:
+            self.save(UserSettings())
+        except (OSError, ValueError, TypeError):
+            logger.warning("Cannot remove invalid saved input")
 
     def save(self, settings: UserSettings) -> None:
         source = _validate_source(settings.source)
