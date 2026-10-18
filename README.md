@@ -42,7 +42,9 @@ Use the progress bar to revisit completed steps. Your captured image stays in me
 
 ## Settings
 
-Open **Settings** in the header to choose a local camera or enter a phone/network stream URL (HTTP, HTTPS or RTSP). Switching inputs discards current findings, tracks and scores. The choice is saved to `~/.skin-analyzer/settings.json` and restored on restart. `--source` (including `start.ps1 -Source`) and `SKIN_SOURCE` override the saved choice; the command-line flag wins over the environment. Set `SKIN_SETTINGS_FILE` to use a different settings file. A phone URL with a password is stored in that file in plain text. Settings is its own page, separate from the analysis flow.
+Open **Settings** in the header to choose a local camera or enter a phone/network stream URL (HTTP, HTTPS or RTSP). Switching inputs discards current findings, tracks and scores. The choice is saved to `~/.skin-analyzer/settings.json` and restored on restart. `--source` (including `start.ps1 -Source`) and `SKIN_SOURCE` override the saved choice; the command-line flag wins over the environment. Set `SKIN_SETTINGS_FILE` to use a different settings file. On Windows, the saved source (including any password) is encrypted with Windows DPAPI for the current user. Elsewhere it is stored in plain text with owner-only permissions (0600). A password passed via `--source` or `start.ps1 -Source` is visible in the process list, so prefer the Settings tab. Settings is its own page, separate from the analysis flow.
+
+The local server blocks cross-site requests and sends anti-framing and Content-Security-Policy headers. Use `--dev` or `SKIN_DEV=1` only for development: it also trusts the Vite dev origin (`http://localhost:5173`). `start.ps1 -Dev` sets this mode.
 
 ## How it works
 
