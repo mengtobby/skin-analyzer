@@ -243,7 +243,10 @@ def test_network_redaction_preserves_root_and_hides_empty_delimiters(suffix: str
 
 
 @pytest.mark.parametrize("options", [None, "", "timeout;100", "protocol_whitelist;http",
-                                     "timeout;100|protocol_whitelist;https"])
+                                     "timeout;100|protocol_whitelist;https",
+                                     "rtsp_transport;udp", "rtsp_flags;filter_src",
+                                     "protocol_whitelist;http|rtsp_transport;tcp",
+                                     "protocol_whitelist;rtsp|rtsp_flags;prefer_tcp"])
 @pytest.mark.parametrize("kind", ["url", "file", "camera"])
 def test_capture_protocol_allowlist(monkeypatch: pytest.MonkeyPatch,
                                    options: str | None, kind: str) -> None:
@@ -266,6 +269,9 @@ def test_capture_protocol_allowlist(monkeypatch: pytest.MonkeyPatch,
     expected = options
     if kind != "camera" and (not options or "protocol_whitelist;" not in options):
         expected = options + "|" + allowlist if options else allowlist
+    if kind != "camera" and not any(
+            key in (options or "") for key in ("rtsp_transport;", "rtsp_flags;")):
+        expected += "|rtsp_flags;prefer_tcp"
     assert observed and all(value == expected for value in observed)
     assert os.environ.get(key) == expected
 
