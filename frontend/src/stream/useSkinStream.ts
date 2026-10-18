@@ -24,8 +24,8 @@ export function useSkinStream() {
       socketRef.current.send(JSON.stringify({ type: "reset" }));
     } else setError("Tracking reset requires a connected stream.");
   };
-  // The server clears its report when the input changes but sends no update until the
-  // new input produces one, so drop the previous input's findings locally.
+  // Optimistic local clear: the server also broadcasts {type: "report", data: null} after a
+  // reset or input switch, but this window drops the old findings without waiting for it.
   const clearReport = () => setReport(null);
   return {
     bitmapRef, headerRef, displayHeaderRef, header, report, health, connection, error, sendReset,
