@@ -8,7 +8,7 @@ interface HandlerState {
   headerRef: MutableRefObject<FrameHeader | null>;
   displayHeaderRef: MutableRefObject<FrameHeader | null>;
   setHealth: (health: Health) => void;
-  setReport: (report: Report) => void;
+  setReport: (report: Report | null) => void;
   setError: (error: string | null) => void;
   isCurrent: () => boolean;
   nextGeneration: () => number;
@@ -50,8 +50,9 @@ export function createMessageHandler(state: HandlerState) {
         const message: unknown = JSON.parse(event.data);
         if (!object(message)) throw new Error("Invalid stream message");
         if (message.type === "status" && isHealth(message.data)) setHealth(message.data);
-        else if (message.type === "report" && isReport(message.data)) setReport(message.data);
-        else throw new Error("Invalid stream message");
+        else if (message.type === "report" && (message.data === null || isReport(message.data))) {
+          setReport(message.data);
+        } else throw new Error("Invalid stream message");
       } else throw new Error("Unsupported stream message");
       if (isCurrent()) setError(null);
     } catch (cause) {

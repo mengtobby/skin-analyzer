@@ -96,7 +96,8 @@ def test_runner_recovers_and_publishes() -> None:
                                   "ingredients", "products", "warnings", "disclaimer"}
         assert runner.health()["status"] == "ok"
         runner.reset()
-        assert runner.latest_report() is None
+        cleared = runner.latest_report()
+        assert cleared is not None and cleared[1] is None
     finally:
         runner.stop()
 

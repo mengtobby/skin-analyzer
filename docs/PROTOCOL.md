@@ -14,7 +14,7 @@ Every REST response is `{"success": bool, "data": <payload|null>, "error": <stri
 | Method | Path          | `data`                                   |
 |--------|---------------|-------------------------------------------|
 | GET    | `/api/health` | `Health`                                  |
-| GET    | `/api/report` | `Report` (latest; `null` before the first) |
+| GET    | `/api/report` | `Report` (latest; `null` before the first or after a clear) |
 | POST   | `/api/reset`  | `{"reset": true}` — clears tracks/smoothing |
 
 ```jsonc
@@ -80,7 +80,11 @@ bytes 4+N..end    JPEG of the display frame (may be empty only if encoding faile
 ### Server → client, text (JSON)
 
 - On connect: `{"type": "status", "data": Health}`
-- About once per second (and only when it changed): `{"type": "report", "data": Report}`
+- When findings change (normally about once per second): `{"type": "report", "data": Report | null}`.
+  `null` is sent immediately when the server discards its findings after a reset or
+  input switch, to sessions currently showing a report; clients must clear the
+  findings they display. Sessions receive no null before their first report or
+  after they have already cleared it, including connections made after a clear.
 
 ### Client → server, text (JSON)
 
