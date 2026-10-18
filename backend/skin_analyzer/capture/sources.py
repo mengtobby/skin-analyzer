@@ -25,10 +25,15 @@ Frame = tuple[np.ndarray, float, int]
 def _configure_ffmpeg_protocols() -> None:
     key = "OPENCV_FFMPEG_CAPTURE_OPTIONS"
     options = os.environ.get(key, "")
-    if not any(part.partition(";")[0] == "protocol_whitelist"
-               for part in options.split("|")):
-        allowlist = "protocol_whitelist;file,http,https,tcp,tls,rtsp,rtp,udp,crypto"
-        os.environ[key] = f"{options}|{allowlist}" if options else allowlist
+    keys = {part.partition(";")[0] for part in options.split("|")}
+    additions = []
+    if "protocol_whitelist" not in keys:
+        additions.append("protocol_whitelist;file,http,https,tcp,tls,rtsp,rtp,udp,crypto")
+    # Setting capture options suppresses OpenCV's implicit RTSP TCP preference.
+    if not keys.intersection({"rtsp_transport", "rtsp_flags"}):
+        additions.append("rtsp_flags;prefer_tcp")
+    if additions:
+        os.environ[key] = "|".join(([options] if options else []) + additions)
 
 
 @dataclass(frozen=True)
