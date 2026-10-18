@@ -109,6 +109,7 @@ async def _send_stream(socket: WebSocket, runner: PipelineRunner, event: asyncio
         report = runner.latest_report()
         if report is not None and report[0] != report_version:
             report_version, data = report
+            # A versioned null broadcasts discarded findings to every session.
             await socket.send_json({"type": "report", "data": data})
 
 

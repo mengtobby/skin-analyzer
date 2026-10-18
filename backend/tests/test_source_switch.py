@@ -57,7 +57,8 @@ def test_switch_resets_and_closes_old():
     runner.switch_source("camera:1")
     assert runner.source is source and runner.source_spec() == "camera:1"
     assert resets == [True] and notifications == [True]
-    assert runner.latest_packet() is None and runner.latest_report() is None
+    cleared = runner.latest_report()
+    assert runner.latest_packet() is None and cleared is not None and cleared[1] is None
     assert old.closed.wait(1)
 
 

@@ -171,6 +171,7 @@ class PipelineRunner:
                 old_source, self.source = self.source, new_source
                 self._source_spec = spec
                 self._packet = self._report = None
+                self._report_version += 1
                 self._last_frame = self._last_report = self._fps = 0.0
                 self._frame_error = self._report_error = None
                 self._condition.notify_all()
@@ -332,9 +333,11 @@ class PipelineRunner:
                 return self._version, self._packet
             return None
 
-    def latest_report(self) -> tuple[int, dict] | None:
+    def latest_report(self) -> tuple[int, dict | None] | None:
         with self._condition:
-            return None if self._report is None else (self._report_version, copy.deepcopy(self._report))
+            if self._report is None and self._report_version == 0:
+                return None
+            return self._report_version, copy.deepcopy(self._report)
 
     def health(self) -> dict:
         info = self.source.info()
@@ -355,7 +358,10 @@ class PipelineRunner:
             with self._condition:
                 self._packet = None
                 self._report = None
+                self._report_version += 1
                 self._last_report = 0.0
+                self._condition.notify_all()
+        self._notify_listeners()
 
 
 def build_default_runner(settings: Settings) -> PipelineRunner:
