@@ -1,5 +1,6 @@
 """Capture tests use synthetic sources and local media only."""
 
+import os
 import threading
 import time
 from pathlib import Path
@@ -192,12 +193,95 @@ def test_invalid_network_url(url: str) -> None:
     assert "secret" not in str(error.value)
 
 
+@pytest.mark.parametrize("url", ["\x00http://host", "\x1fhttp://host", "http://host/\x7f",
+                                  "http://host/\nsecret", "http://host/café"])
+@pytest.mark.parametrize("use_spec", [False, True])
+def test_network_url_requires_printable_ascii(url: str, use_spec: bool) -> None:
+    with pytest.raises(ValueError) as error:
+        create_source("url:" + url) if use_spec else NetworkStreamSource(url)
+    assert str(error.value) == "Invalid network stream URL"
+
+
+@pytest.mark.parametrize("userinfo", ["username", "username:pass%77ord", ""])
+def test_network_all_sensitive_components_redacted(
+        userinfo: str, caplog: pytest.LogCaptureFixture) -> None:
+    authority = userinfo + "@" if userinfo else ""
+    url = f"http://{authority}host:8080/path%74oken/longtoken?key=query%76alue#frag%6dent"
+    secrets = ["pathtoken", "path%74oken", "longtoken", "queryvalue", "query%76alue",
+               "fragment", "frag%6dent"]
+    if userinfo:
+        secrets += ["username"]
+    if ":" in userinfo:
+        secrets += ["pass%77ord", "password"]
+
+    def factory(*args: object) -> FakeCapture:
+        raise RuntimeError(f"Failed {url}; " + " ".join(secrets))
+
+    source = NetworkStreamSource(url, capture_factory=factory)
+    expected = "url:http://" + ("***@" if userinfo else "") + "host:8080/***?***#***"
+    assert source.info().spec == expected
+    assert list(map(len, source._secrets)) == sorted(map(len, source._secrets), reverse=True)
+    source.start()
+    try:
+        deadline = time.monotonic() + 1
+        while source.info().error is None and time.monotonic() < deadline:
+            source.read(0.01)
+        assert source.info().error is not None
+        assert source._thread is not None
+        assert source._thread.name == f"capture-{expected}"
+        for secret in secrets:
+            assert secret not in source.info().error
+            assert secret not in caplog.text
+    finally:
+        source.close()
+
+
+@pytest.mark.parametrize("suffix", ["", "/", "?", "#", "/?#"])
+def test_network_redaction_preserves_root_and_hides_empty_delimiters(suffix: str) -> None:
+    safe = suffix.replace("?", "?***").replace("#", "#***")
+    assert NetworkStreamSource("https://host" + suffix).info().spec == "url:https://host" + safe
+
+
+@pytest.mark.parametrize("options", [None, "", "timeout;100", "protocol_whitelist;http",
+                                     "timeout;100|protocol_whitelist;https",
+                                     "rtsp_transport;udp", "rtsp_flags;filter_src",
+                                     "protocol_whitelist;http|rtsp_transport;tcp",
+                                     "protocol_whitelist;rtsp|rtsp_flags;prefer_tcp"])
+@pytest.mark.parametrize("kind", ["url", "file", "camera"])
+def test_capture_protocol_allowlist(monkeypatch: pytest.MonkeyPatch,
+                                   options: str | None, kind: str) -> None:
+    key = "OPENCV_FFMPEG_CAPTURE_OPTIONS"
+    if options is None:
+        monkeypatch.delenv(key, raising=False)
+    else:
+        monkeypatch.setenv(key, options)
+    observed: list[str | None] = []
+
+    def factory(*args: object) -> FakeCapture:
+        observed.append(os.environ.get(key))
+        raise RuntimeError("stop before reading")
+
+    spec = {"url": "url:http://host/video", "file": "file:video.mp4", "camera": "camera:0"}
+    source = create_source(spec[kind], capture_factory=factory)
+    with pytest.raises(RuntimeError):
+        source._stream()
+    allowlist = "protocol_whitelist;file,http,https,tcp,tls,rtsp,rtp,udp,crypto"
+    expected = options
+    if kind != "camera" and (not options or "protocol_whitelist;" not in options):
+        expected = options + "|" + allowlist if options else allowlist
+    if kind != "camera" and not any(
+            key in (options or "") for key in ("rtsp_transport;", "rtsp_flags;")):
+        expected += "|rtsp_flags;prefer_tcp"
+    assert observed and all(value == expected for value in observed)
+    assert os.environ.get(key) == expected
+
+
 @pytest.mark.parametrize("scheme", ["http", "HTTPS", "RTSP"])
 def test_network_parsing(scheme: str) -> None:
     spec = f"url:{scheme}://10.0.0.5:8080/video"
     source = create_source(spec)
     assert isinstance(source, NetworkStreamSource)
-    assert source.info().spec == spec
+    assert source.info().spec == f"url:{scheme}://10.0.0.5:8080/***"
 
 
 def test_network_frames_and_reconnect() -> None:
@@ -238,7 +322,7 @@ def test_network_credentials_redacted(caplog: pytest.LogCaptureFixture) -> None:
         raise RuntimeError(f"Failed {url}; password secret")
 
     source = NetworkStreamSource(url, capture_factory=factory)
-    assert source.info().spec == "url:http://user:***@host/video"
+    assert source.info().spec == "url:http://***@host/***"
     source.start()
     try:
         deadline = time.monotonic() + 1
@@ -259,7 +343,7 @@ def test_network_query_credentials_redacted(caplog: pytest.LogCaptureFixture) ->
         raise RuntimeError(f"Failed {url}; token=secret pwd=hunter2")
 
     source = NetworkStreamSource(url, capture_factory=factory)
-    assert source.info().spec == "url:http://host:8080/video?***"
+    assert source.info().spec == "url:http://host:8080/***?***"
     source.start()
     try:
         deadline = time.monotonic() + 1

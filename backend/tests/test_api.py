@@ -118,7 +118,7 @@ def test_multiple_websocket_clients() -> None:
                                     "http://localhost:8123", "http://127.0.0.1:8123", "http://[::1]:8123",
                                     "https://trusted.example"])
 def test_allowed_origins(origin) -> None:
-    settings = Settings(port=8123, extra_origins=("https://trusted.example",))
+    settings = Settings(dev=True, port=8123, extra_origins=("https://trusted.example",))
     with TestClient(headers={"host": "localhost"}, base_url="http://localhost", app=create_app(settings, FakeRunner())) as client:
         with stream(client, {"origin": origin}) as socket:
             ready(socket)
@@ -474,3 +474,110 @@ def test_settings_origin_and_save_failure(monkeypatch, tmp_path):
         assert not runner.specs
         response = client.post("/api/settings/source", json={"kind": "camera", "index": 0})
         assert response.json()["data"]["saved"] is False
+
+@pytest.mark.parametrize("site", [None, "same-origin", "same-site", "none", "cross-site"])
+def test_fetch_site_policy(site):
+    runner = FakeRunner()
+    headers = {} if site is None else {"sec-fetch-site": site}
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(), runner), base_url="http://localhost",
+                    client=("127.0.0.1", 50000)) as client:
+        for method, path in [("GET", "/api/report"), ("POST", "/api/reset")]:
+            response = client.request(method, path, headers=headers)
+            assert response.status_code == (403 if site == "cross-site" else 200)
+            if site == "cross-site":
+                assert response.json() == {"success": False, "data": None,
+                                           "error": "Cross-site request blocked"}
+        assert runner.resets == (0 if site == "cross-site" else 1)
+        if site == "cross-site":
+            with pytest.raises(WebSocketDisconnect) as exc:
+                with client.websocket_connect("/ws/stream", headers=headers):
+                    pytest.fail("cross-site socket accepted")
+            assert exc.value.code == 1008
+        else:
+            with stream(client, headers) as socket:
+                ready(socket)
+
+
+def test_foreign_camera_origin_does_not_probe(monkeypatch):
+    from skin_analyzer.api import app as api
+    monkeypatch.setattr(api, "probe_cameras", lambda **kw: pytest.fail("camera probe"))
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(), SettingsRunner()), base_url="http://localhost") as client:
+        assert client.get("/api/settings/cameras", headers={"origin": "https://evil.test"}).status_code == 403
+        assert client.get("/api/settings/cameras", headers={"sec-fetch-site": "cross-site"}).status_code == 403
+
+
+def test_security_headers_on_api_static_and_rejections(tmp_path):
+    (tmp_path / "index.html").write_text("<html>dashboard</html>", encoding="utf-8")
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(static_dir=tmp_path), FakeRunner()), base_url="http://localhost") as client:
+        for path, headers in [("/", {}), ("/api/report", {}), ("/missing", {}),
+                              ("/api/report", {"host": "evil.test"}),
+                              ("/api/report", {"sec-fetch-site": "cross-site"})]:
+            response = client.get(path, headers=headers)
+            assert response.headers["x-frame-options"] == "DENY"
+            assert response.headers["x-content-type-options"] == "nosniff"
+            assert response.headers["referrer-policy"] == "no-referrer"
+            assert response.headers["content-security-policy"] == (
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; connect-src 'self' ws: wss:; object-src 'none'; "
+                "base-uri 'self'; frame-ancestors 'none'; form-action 'self'")
+
+
+@pytest.mark.parametrize("dev", [False, True])
+@pytest.mark.parametrize("origin", ["http://localhost:5173", "http://127.0.0.1:5173"])
+def test_vite_origin_requires_dev(dev, origin):
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(dev=dev), FakeRunner()), base_url="http://localhost") as client:
+        assert client.post("/api/reset", headers={"origin": origin}).status_code == (200 if dev else 403)
+        if dev:
+            with stream(client, {"origin": origin}) as socket:
+                ready(socket)
+        else:
+            with pytest.raises(WebSocketDisconnect) as exc:
+                with client.websocket_connect("/ws/stream", headers={"origin": origin}):
+                    pytest.fail("Vite trusted outside development")
+            assert exc.value.code == 1008
+
+
+@pytest.mark.parametrize("mode", ["length", "stream", "declared", "understated"])
+def test_source_body_limit(mode):
+    runner = SettingsRunner()
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(), runner), base_url="http://localhost") as client:
+        if mode == "declared":
+            response = client.post("/api/settings/source", content=b"{}", headers={"content-length": "4097"})
+        elif mode == "length":
+            response = client.post("/api/settings/source", content=b" " * 4097)
+        else:
+            headers = {"content-length": "2"} if mode == "understated" else {}
+            response = client.post("/api/settings/source", content=iter([b" " * 2048, b" " * 2049]), headers=headers)
+        assert response.status_code == 413
+        assert response.json()["success"] is False and not runner.specs
+
+
+@pytest.mark.parametrize("body", [b"[" * 1500 + b"]" * 1500, b"{", b"\xff"])
+def test_source_malformed_json_is_friendly(body):
+    runner = SettingsRunner()
+    with TestClient(headers={"host": "localhost"}, app=create_app(Settings(), runner), base_url="http://localhost") as client:
+        response = client.post("/api/settings/source", content=body)
+        assert response.status_code == 422
+        assert response.json()["error"] == "Choose a camera from 0 to 9 or a valid HTTP, HTTPS or RTSP stream address"
+        assert not runner.specs
+
+
+def test_security_headers_on_unhandled_errors(monkeypatch, tmp_path):
+    from skin_analyzer.api import app as api
+
+    runner = FakeRunner()
+    def fail(_runner):
+        raise RuntimeError("private error")
+    monkeypatch.setattr(api, "_source_view", fail)
+    (tmp_path / "index.html").write_text("<html>dashboard</html>", encoding="utf-8")
+    with TestClient(headers={"host": "localhost"},
+                    app=create_app(Settings(static_dir=tmp_path), runner),
+                    base_url="http://localhost", raise_server_exceptions=False) as client:
+        # A route with no local error handler exercises the outer server-error response.
+        response = client.get("/api/settings")
+        assert response.status_code == 500
+        assert response.headers["x-frame-options"] == "DENY"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["referrer-policy"] == "no-referrer"
+        assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+        assert "private error" not in response.text

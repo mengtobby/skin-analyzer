@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import sys
 import threading
 import time
@@ -19,6 +20,20 @@ import numpy as np
 logger = logging.getLogger(__name__)
 CaptureFactory = Callable[..., Any]
 Frame = tuple[np.ndarray, float, int]
+
+
+def _configure_ffmpeg_protocols() -> None:
+    key = "OPENCV_FFMPEG_CAPTURE_OPTIONS"
+    options = os.environ.get(key, "")
+    keys = {part.partition(";")[0] for part in options.split("|")}
+    additions = []
+    if "protocol_whitelist" not in keys:
+        additions.append("protocol_whitelist;file,http,https,tcp,tls,rtsp,rtp,udp,crypto")
+    # Setting capture options suppresses OpenCV's implicit RTSP TCP preference.
+    if not keys.intersection({"rtsp_transport", "rtsp_flags"}):
+        additions.append("rtsp_flags;prefer_tcp")
+    if additions:
+        os.environ[key] = "|".join(([options] if options else []) + additions)
 
 
 @dataclass(frozen=True)
@@ -224,30 +239,34 @@ class NetworkStreamSource(_ThreadedSource):
                  fps: int = 30, mirror: bool = True,
                  capture_factory: CaptureFactory | None = None) -> None:
         try:
+            if not url.isascii() or not url.isprintable():
+                raise ValueError
             parsed = urlsplit(url)
             if (parsed.scheme.lower() not in {"http", "https", "rtsp"}
                     or not parsed.hostname or any(char.isspace() for char in url)):
                 raise ValueError
-            password = parsed.password
         except (ValueError, TypeError, AttributeError):
             raise ValueError("Invalid network stream URL") from None
         self._url = url
-        safe_url = url
-        if password is not None:
-            userinfo, host = parsed.netloc.rsplit("@", 1)
-            safe_netloc = userinfo.split(":", 1)[0] + ":***@" + host
-            safe_url = safe_url.replace(parsed.netloc, safe_netloc, 1)
-        # Phone camera apps often pass tokens or passwords as query parameters.
-        if parsed.query:
-            safe_url = safe_url.replace("?" + parsed.query, "?***", 1)
+        safe_netloc = ("***@" + parsed.netloc.rsplit("@", 1)[1]
+                       if "@" in parsed.netloc else parsed.netloc)
+        safe_path = "/***" if parsed.path and parsed.path != "/" else parsed.path
+        safe_url = url[:url.index(":")] + "://" + safe_netloc + safe_path
+        if "?" in url.split("#", 1)[0]:
+            safe_url += "?***"
+        if "#" in url:
+            safe_url += "#***"
         self._safe_url = safe_url
-        self._secrets = self._secret_values(password, parsed.query)
+        self._secrets = self._secret_values(parsed.username, parsed.password,
+                                           parsed.path, parsed.query, parsed.fragment)
         super().__init__(f"url:{safe_url}", width, height, fps, mirror, capture_factory)
 
     @staticmethod
-    def _secret_values(password: str | None, query: str) -> tuple[str, ...]:
-        """Password and query values (raw and decoded), longest first so none leaks partially."""
-        raw = [password or ""] + [part.partition("=")[2] or part for part in query.split("&")]
+    def _secret_values(username: str | None, password: str | None, path: str,
+                       query: str, fragment: str) -> tuple[str, ...]:
+        """Sensitive URL components, raw and decoded, longest first."""
+        raw = [username or "", password or "", fragment, *path.split("/")]
+        raw += [part.partition("=")[2] or part for part in query.split("&")]
         values = {v for item in raw for v in (item, unquote(item)) if v}
         return tuple(sorted(values, key=len, reverse=True))
 
@@ -258,6 +277,7 @@ class NetworkStreamSource(_ThreadedSource):
         return error
 
     def _stream(self) -> None:
+        _configure_ffmpeg_protocols()
         self._capture = self._factory(self._url, cv2.CAP_FFMPEG)
         if not self._capture.isOpened():
             raise RuntimeError("Network stream did not open")
@@ -299,6 +319,7 @@ class VideoFileSource(_ThreadedSource):
                 raise RuntimeError(f"Cannot read image: {self._path}")
             native_fps = self.info().fps
         else:
+            _configure_ffmpeg_protocols()
             self._capture = self._factory(self._path)
             if not self._capture.isOpened():
                 raise RuntimeError(f"Cannot open video: {self._path}")

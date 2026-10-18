@@ -65,11 +65,12 @@ def main() -> None:
     parser.add_argument("--report-interval-s", type=float)
     parser.add_argument("--extra-origins", type=lambda raw: tuple(
         x.strip() for x in raw.split(",") if x.strip()))
+    parser.add_argument("--dev", action="store_true", default=None)
     parser.add_argument("--no-mirror", action="store_true")
     parser.add_argument("--open", action="store_true", dest="open_browser")
     args = parser.parse_args()
     overrides = {key: getattr(args, key) for key in
-                 ("source", "host", "port", "detector", "preprocess", "width", "height",
+                 ("dev", "source", "host", "port", "detector", "preprocess", "width", "height",
                   "fps", "jpeg_quality", "report_interval_s", "extra_origins") if getattr(args, key) is not None}
     if args.no_mirror:
         overrides["mirror"] = False
