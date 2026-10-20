@@ -17,13 +17,14 @@ function useCameraInput(onInputChanged?: () => void) {
   const [selection, select] = useState("");
   const [url, updateUrl] = useState("");
   const [appliedUrl, rememberApplied] = useState<string | null>(null);
-  const [scanning, scan] = useState(false);
+  const [scanning, scan] = useState(true); // the first scan starts on mount
   const [pending, connect] = useState(false);
   const [error, fail] = useState("");
   const [urlFailed, markUrlFailed] = useState(false);
   const [scanError, failScan] = useState("");
   const [status, notify] = useState("");
   const [scanNumber, rescan] = useState(0);
+  const [urlLeft, markUrlLeft] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -62,20 +63,28 @@ function useCameraInput(onInputChanged?: () => void) {
     finally { connect(false); }
   }
 
-  return { source, cameras, selection, select, url, updateUrl, scanning, pending, error, urlFailed,
-    scanError, status, rescan, changed, apply };
+  // Editing hides the format error until the field is left again and drops a stale server error.
+  function editUrl(value: string) {
+    updateUrl(value);
+    markUrlLeft(false);
+    if (urlFailed) { markUrlFailed(false); fail(""); }
+  }
+
+  return { source, cameras, selection, select, url, editUrl, urlLeft, markUrlLeft, scanning, pending,
+    error, urlFailed, scanError, status, rescan, changed, apply };
 }
 
 export function CameraInputSection({ onInputChanged }: SettingsSectionProps) {
-  const { source, cameras, selection, select, url, updateUrl, scanning, pending, error, urlFailed,
-    scanError, status, rescan, changed, apply } = useCameraInput(onInputChanged);
-  const invalidUrl = url !== "" && !validUrl(url);
+  const { source, cameras, selection, select, url, editUrl, urlLeft, markUrlLeft, scanning, pending,
+    error, urlFailed, scanError, status, rescan, changed, apply } = useCameraInput(onInputChanged);
+  const invalidUrl = urlLeft && url !== "" && !validUrl(url);
   const serverUrlError = urlFailed && error !== "";
   const description = ["stream-help", invalidUrl && "stream-error", serverUrlError && "camera-input-error"]
     .filter(Boolean).join(" ");
   return <div className="camera-settings">
     <p>Current input: <strong>{source ? sourceLabel(source) : "Loading current input…"}</strong></p>
-    <p id="camera-input-error" role="alert">{[error, scanError].filter(Boolean).join(" ")}</p>
+    <p id="camera-input-error" role="alert">{error}</p>
+    <p id="camera-scan-error" role="alert">{scanError}</p>
     <div className="camera-scan">
       <span role="status">{scanning ? "Scanning for cameras…" : ""}</span>
       {!scanning && cameras.length === 0 && <span className="muted">No local cameras found.</span>}
@@ -93,7 +102,7 @@ export function CameraInputSection({ onInputChanged }: SettingsSectionProps) {
         checked={selection === "url"} onChange={() => select("url")} />Phone / network stream</label>
       {selection === "url" && <div className="stream-address">
         <label htmlFor="stream-url">Stream URL</label>
-        <input id="stream-url" type="url" value={url} onChange={(event) => updateUrl(event.target.value)}
+        <input id="stream-url" type="url" value={url} onChange={(event) => editUrl(event.target.value)} onBlur={() => markUrlLeft(true)}
           placeholder="http://192.168.1.20:8080/video" aria-describedby={description}
           aria-invalid={invalidUrl || serverUrlError || undefined} autoComplete="off" />
         <p className="muted" id="stream-help">Install an IP-camera app on your phone, connect to the same Wi-Fi,

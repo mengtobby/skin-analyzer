@@ -174,3 +174,10 @@ it('changes the countdown text no more than once per second in the same polite r
   expect(guidance).toHaveTextContent('Hold still... 2 seconds');
   expect(screen.getByRole('status')).toBe(guidance);
 });
+
+it('reads quality issues once, through the guidance live region', () => {
+  const s = stream();
+  render(<CameraPage stream={{ ...s, header: { ...s.header!, quality: qualityFixture } }} onCapture={vi.fn()} />);
+  const list = document.querySelector('.quality-banner ul');
+  expect(list).toHaveAttribute('aria-hidden', 'true');
+});

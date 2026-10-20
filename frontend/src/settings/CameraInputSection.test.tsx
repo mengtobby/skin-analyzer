@@ -49,6 +49,10 @@ it("validates stream protocols and clears the URL after success", async () => {
   for (const url of ["bad", "ftp://phone/video", "javascript:alert(1)", "rtsp:video", "rtsp://"]) {
     fireEvent.change(input, { target: { value: url } });
     expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+    // No interrupting error while typing; it appears once the field is left.
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText("Enter an address that starts with http://, https:// or rtsp://")).toBeNull();
+    fireEvent.blur(input);
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAttribute("aria-describedby", "stream-help stream-error");
     expect(screen.getByText("Enter an address that starts with http://, https:// or rtsp://")).toBeVisible();
@@ -170,7 +174,7 @@ it("keeps live regions mounted before their messages and through updates", async
   render(<CameraInputSection />);
   const alerts = screen.getAllByRole("alert");
   const statuses = screen.getAllByRole("status");
-  expect(alerts).toHaveLength(2);
+  expect(alerts).toHaveLength(3);
   expect(alerts.every((region) => region.textContent === "")).toBe(true);
   expect(statuses).toHaveLength(3);
   expect(statuses.slice(1).every((region) => region.textContent === "")).toBe(true);
@@ -179,7 +183,9 @@ it("keeps live regions mounted before their messages and through updates", async
   const input = screen.getByRole("textbox", { name: "Stream URL" });
   expect(input).not.toHaveAttribute("aria-invalid");
   fireEvent.change(input, { target: { value: "bad" } });
-  expect(alerts[1]).toHaveTextContent("Enter an address");
+  expect(alerts[2]).toHaveTextContent("");
+  fireEvent.blur(input);
+  expect(alerts[2]).toHaveTextContent("Enter an address");
   fireEvent.change(input, { target: { value: "https://phone/video" } });
   fetchMock.mockResolvedValueOnce({ ok: false,
     json: async () => ({ success: false, error: "Stream unavailable", data: null }) });
@@ -189,6 +195,12 @@ it("keeps live regions mounted before their messages and through updates", async
   expect(input).toHaveAttribute("aria-invalid", "true");
   expect(input).toHaveAttribute("aria-describedby", "stream-help camera-input-error");
   expect(alerts[0]).toHaveTextContent("Stream unavailable");
+  // Editing the address drops the stale server error from the field.
+  fireEvent.change(input, { target: { value: "https://phone/video2" } });
+  expect(input).not.toHaveAttribute("aria-invalid");
+  expect(input).toHaveAttribute("aria-describedby", "stream-help");
+  expect(alerts[0]).toHaveTextContent("");
+  fireEvent.change(input, { target: { value: "https://phone/video" } });
   fetchMock.mockResolvedValueOnce(response({
     source: { kind: "url", spec: "url:https://phone/video", camera_index: null }, saved: true,
   }));
@@ -199,4 +211,19 @@ it("keeps live regions mounted before their messages and through updates", async
   expect(input).toHaveAttribute("aria-describedby", "stream-help");
   expect(screen.getAllByRole("alert")).toEqual(alerts);
   expect(screen.getAllByRole("status")).toEqual(statuses);
+});
+
+it("shows scanning from the first paint and keeps scan errors out of the URL field description", async () => {
+  let fail!: (reason: Error) => void;
+  fetchMock.mockImplementation((path: string) => path.endsWith("cameras")
+    ? new Promise((_, reject) => { fail = reject; }) : Promise.resolve(response({ source })));
+  render(<CameraInputSection />);
+  expect(screen.getByText("Scanning for cameras…")).toBeInTheDocument();
+  expect(screen.queryByText("No local cameras found.")).toBeNull();
+  fail(new Error("Camera scan failed"));
+  await waitFor(() => expect(document.getElementById("camera-scan-error")).toHaveTextContent("Settings service unavailable"));
+  fireEvent.click(screen.getByLabelText("Phone / network stream"));
+  const input = screen.getByLabelText("Stream URL");
+  expect(input.getAttribute("aria-describedby")).toBe("stream-help");
+  expect(document.getElementById("camera-input-error")).toHaveTextContent("");
 });
