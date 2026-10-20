@@ -46,13 +46,19 @@ it("validates stream protocols and clears the URL after success", async () => {
   await screen.findByText("Camera 1");
   fireEvent.click(screen.getByLabelText("Phone / network stream"));
   const input = screen.getByLabelText("Stream URL");
-  for (const url of ["bad", "ftp://phone/video", "javascript:alert(1)"]) {
+  for (const url of ["bad", "ftp://phone/video", "javascript:alert(1)", "rtsp:video", "rtsp://"]) {
     fireEvent.change(input, { target: { value: url } });
     expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAttribute("aria-describedby", "stream-help stream-error");
+    expect(screen.getByText("Enter an address that starts with http://, https:// or rtsp://")).toBeVisible();
   }
   for (const url of ["http://phone/video", "https://phone/video", "rtsp://phone/video"]) {
     fireEvent.change(input, { target: { value: url } });
     expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled();
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(input).toHaveAttribute("aria-describedby", "stream-help");
+    expect(screen.queryByText("Enter an address that starts with http://, https:// or rtsp://")).toBeNull();
   }
   fetchMock.mockResolvedValueOnce(response({ source: { kind: "url", spec: "url:rtsp://phone/video", camera_index: null }, saved: true }));
   fireEvent.click(screen.getByRole("button", { name: "Apply" }));
@@ -65,7 +71,7 @@ it("shows a server failure and allows retry", async () => {
   fireEvent.click(await screen.findByLabelText("Camera 2 · 1280×720"));
   fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({ success: false, error: "Camera busy", data: null }) });
   fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Camera busy");
+  expect(await screen.findByText("Camera busy")).toHaveAttribute("role", "alert");
   expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled();
 });
 
@@ -74,7 +80,7 @@ it("shows file input and scan errors without losing the network option", async (
     Promise.resolve(response({ source: { kind: "file", spec: "file:private.png", camera_index: null } })));
   render(<CameraInputSection />);
   expect(await screen.findByText("Video file")).toBeVisible();
-  expect(await screen.findByRole("alert")).toHaveTextContent("Settings service unavailable");
+  expect(await screen.findByText("Settings service unavailable")).toHaveAttribute("role", "alert");
   expect(screen.getByLabelText("Phone / network stream")).toBeEnabled();
   expect(screen.queryByText(/private.png/)).toBeNull();
 });
@@ -91,7 +97,7 @@ it("disables apply if current settings cannot be loaded", async () => {
   fetchMock.mockImplementation((path: string) => path.endsWith("cameras") ? Promise.resolve(response({ cameras })) :
     Promise.reject(new Error("transport")));
   render(<CameraInputSection />);
-  expect(await screen.findByRole("alert")).toHaveTextContent("Settings service unavailable");
+  expect(await screen.findByText("Settings service unavailable")).toHaveAttribute("role", "alert");
   expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
 });
 
@@ -104,7 +110,7 @@ it("reports a successful live switch when the preference could not be saved", as
     "Now using Camera 2. Earlier results were cleared. This choice could not be saved for next launch.")).toHaveAttribute("role", "status");
   expect(screen.getByText("Camera 2", { exact: true })).toBeVisible();
   expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
-  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getAllByRole("alert").every((region) => region.textContent === "")).toBe(true);
 });
 
 it("notifies the dashboard only after a successful switch", async () => {
@@ -158,4 +164,39 @@ it("explains how a stream password is stored", async () => {
   const help = screen.getByText(/saved encrypted for your account/);
   expect(help).toHaveTextContent(/elsewhere it is stored in plain text readable only by your user account/i);
   expect(help).toHaveTextContent(/avoid putting passwords on the command line/i);
+});
+
+it("keeps live regions mounted before their messages and through updates", async () => {
+  render(<CameraInputSection />);
+  const alerts = screen.getAllByRole("alert");
+  const statuses = screen.getAllByRole("status");
+  expect(alerts).toHaveLength(2);
+  expect(alerts.every((region) => region.textContent === "")).toBe(true);
+  expect(statuses).toHaveLength(3);
+  expect(statuses.slice(1).every((region) => region.textContent === "")).toBe(true);
+  await screen.findByText("Camera 1");
+  fireEvent.click(screen.getByRole("radio", { name: "Phone / network stream" }));
+  const input = screen.getByRole("textbox", { name: "Stream URL" });
+  expect(input).not.toHaveAttribute("aria-invalid");
+  fireEvent.change(input, { target: { value: "bad" } });
+  expect(alerts[1]).toHaveTextContent("Enter an address");
+  fireEvent.change(input, { target: { value: "https://phone/video" } });
+  fetchMock.mockResolvedValueOnce({ ok: false,
+    json: async () => ({ success: false, error: "Stream unavailable", data: null }) });
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  expect(statuses[1]).toHaveTextContent(/Connecting/);
+  await screen.findByText("Stream unavailable");
+  expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(input).toHaveAttribute("aria-describedby", "stream-help camera-input-error");
+  expect(alerts[0]).toHaveTextContent("Stream unavailable");
+  fetchMock.mockResolvedValueOnce(response({
+    source: { kind: "url", spec: "url:https://phone/video", camera_index: null }, saved: true,
+  }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  await screen.findByText(/Earlier results were cleared/);
+  expect(statuses[2]).toHaveTextContent(/Earlier results were cleared/);
+  expect(input).not.toHaveAttribute("aria-invalid");
+  expect(input).toHaveAttribute("aria-describedby", "stream-help");
+  expect(screen.getAllByRole("alert")).toEqual(alerts);
+  expect(screen.getAllByRole("status")).toEqual(statuses);
 });

@@ -1,4 +1,4 @@
-import type { Condition, Insight, Label, Report, Zone } from "../protocol/types";
+import type { Condition, Insight, Label, Report, Track, Zone } from "../protocol/types";
 
 export const LABEL_INFO: Record<Label, { name: string; plural: string; description: string; condition: Condition }> = {
   papule: { name: "Papule", plural: "Papules", description: "A small raised bump that can look red or feel tender. It may appear when a pore becomes irritated.", condition: "inflammatory_acne" },
@@ -18,4 +18,9 @@ export const ZONE_NAMES: Record<Zone, string> = {
 
 export function insightFor(label: Label, report: Report): Insight | undefined {
   return report.insights.find(insight => insight.condition === LABEL_INFO[label].condition);
+}
+
+/** indexWithinLabel is zero-based within its type in capture order. */
+export function areaName(track: Track, indexWithinLabel: number): string {
+  return `${LABEL_INFO[track.label].name} ${indexWithinLabel + 1}, ${ZONE_NAMES[track.zone]}`;
 }

@@ -15,4 +15,6 @@
 .live-panel .canvas-wrap { border-radius: 18px; overflow: hidden; }
 .camera-layout progress { display: block; width: 100%; accent-color: var(--progress); margin: 16px 0; }
 .camera-layout .ui-card > .ui-button { width: 100%; }
+.camera-page .ui-button[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.camera-page .ui-button--primary[aria-disabled="true"]:hover { background: var(--text); border-color: var(--text); }
 @media (max-width: 800px) { .camera-layout, .capture-tips { grid-template-columns: 1fr; } .start-hero { margin-bottom: 32px; } }
