@@ -4,6 +4,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CameraPage } from "./CameraPage";
 import { frameFixture, qualityFixture, reportFixture } from "../protocol/fixtures";
 import type { SkinStream } from "./useScan";
+import { readFileSync } from "node:fs";
+import { URL as NodeURL } from "node:url";
+const flowCss = readFileSync(new NodeURL("./flow.css", import.meta.url), "utf-8");
 vi.mock('../components/LiveView', () => ({ LiveView: () => <div>Live camera</div> }));
 function stream(): SkinStream {
   const header = { ...frameFixture, quality: { ...qualityFixture, ok: true, issues: [] } };
@@ -153,6 +156,9 @@ it('focuses Cancel during scanning and Analyze after cancelling or an error', ()
   const analyze = screen.getByRole('button', { name: 'Analyze my skin' });
   expect(analyze).toHaveFocus();
   expect(analyze).toHaveAttribute('aria-disabled', 'true');
+  expect(analyze.matches('.camera-page .ui-button[aria-disabled="true"]')).toBe(true);
+  expect(flowCss).toMatch(/\.camera-page \.ui-button\[aria-disabled="true"\]\s*\{[^}]*opacity:\s*\.5;[^}]*cursor:\s*not-allowed;/);
+  expect(flowCss).toMatch(/\.camera-page \.ui-button--primary\[aria-disabled="true"\]:hover\s*\{[^}]*background:\s*var\(--text\);[^}]*border-color:\s*var\(--text\);/);
   fireEvent.click(analyze);
   expect(screen.queryByRole('button', { name: 'Cancel scan' })).not.toBeInTheDocument();
 });
