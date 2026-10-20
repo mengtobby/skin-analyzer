@@ -19,6 +19,8 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 it("renders every settings section with an accessible heading", async () => {
   render(<SettingsPage />);
+  expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+  expect(screen.getAllByRole("heading")[0]).toHaveTextContent("Settings");
   const titles = ["Camera input"];
   expect(screen.getAllByRole("region")).toHaveLength(titles.length);
   expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(titles.length);

@@ -9,7 +9,7 @@ export interface SettingsSectionProps {
 const sections: { id: string; title: string; component: ComponentType<SettingsSectionProps> }[] = [{ id: "camera-input", title: "Camera input", component: CameraInputSection }];
 
 export function SettingsPage(props: SettingsSectionProps) {
-  return <div className="settings-page">{sections.map(({ id, title, component: Component }) =>
+  return <div className="settings-page"><h1>Settings</h1>{sections.map(({ id, title, component: Component }) =>
     <section className="panel" key={id} aria-labelledby={`${id}-heading`}>
       <h2 id={`${id}-heading`}>{title}</h2>
       <Component {...props} />

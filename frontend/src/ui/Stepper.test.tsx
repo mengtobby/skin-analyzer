@@ -17,7 +17,7 @@ it("marks the current step and exposes the step count", () => {
 it("only makes completed steps selectable", () => {
   const onSelect = vi.fn();
   render(<Stepper steps={steps} current={2} onSelect={onSelect} />);
-  fireEvent.click(screen.getByRole("button", { name: "Camera" }));
+  fireEvent.click(screen.getByRole("button", { name: "Camera (completed)" }));
   expect(onSelect).toHaveBeenCalledWith(1);
   expect(screen.queryByRole("button", { name: "Results" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Treatments" })).not.toBeInTheDocument();
@@ -31,4 +31,13 @@ it("uses plain text without a selection handler and clamps progress", () => {
   expect(segment).toHaveStyle({ width: "0%" });
   rerender(<Stepper steps={steps} current={1} currentProgress={NaN} />);
   expect(segment).toHaveStyle({ width: "35%" });
+});
+
+it.each([false, true])("announces completion with selectable=%s", selectable => {
+  render(<Stepper steps={steps} current={2} onSelect={selectable ? vi.fn() : undefined} />);
+  screen.getAllByRole('listitem').forEach((item, index) => {
+    if (index < 2) expect(within(item).getByText('(completed)')).toHaveClass('sr-only');
+    else expect(within(item).queryByText('(completed)')).not.toBeInTheDocument();
+    expect(within(item).getByText(`Step ${index + 1} of 4`)).toBeInTheDocument();
+  });
 });

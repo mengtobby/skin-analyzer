@@ -13,8 +13,8 @@ export function Stepper({ steps, current, currentProgress = 0.35, onSelect }: St
   return <nav className="ui-stepper" aria-label="Analysis progress">
     <ol>{steps.map((step, index) => <li key={step.id} aria-current={index === active ? "step" : undefined}>
       {index < active && onSelect
-        ? <button type="button" className="ui-stepper__label" onClick={() => onSelect(index)} title={step.label}>{step.label}</button>
-        : <span className="ui-stepper__label" title={step.label}>{step.label}</span>}
+        ? <button type="button" className="ui-stepper__label" onClick={() => onSelect(index)} title={step.label}>{step.label}<span className="sr-only"> (completed)</span></button>
+        : <span className="ui-stepper__label" title={step.label}>{step.label}{index < active && <span className="sr-only"> (completed)</span>}</span>}
       <span className="sr-only">Step {index + 1} of {steps.length}</span>
       <span className="ui-stepper__marker" aria-hidden="true">{index === active && <span />}</span>
       <span className="ui-stepper__segment" aria-hidden="true"><span style={{ width: `${index < active ? 100 : index === active ? progress * 100 : 0}%` }} /></span>
