@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SettingsPage } from "./settings/SettingsPage";
 import { useSkinStream } from "./stream/useSkinStream";
 import { AppShell, Badge, ScanFaceIcon, SettingsIcon, Stepper } from "./ui";
@@ -12,6 +12,25 @@ const steps = ['Start', 'Camera', 'Results', 'Treatments'].map(label => ({ id: l
 export default function App() {
   const stream = useSkinStream();
   const flow = useAnalysisFlow();
+  const previousRoute = useRef(flow.route);
+  useEffect(() => {
+    const titles: Record<Route, string> = {
+      start: 'Start – Step 1 of 4 – Skin Analyzer',
+      camera: 'Camera – Step 2 of 4 – Skin Analyzer',
+      results: 'Results – Step 3 of 4 – Skin Analyzer',
+      treatments: 'Treatments – Step 4 of 4 – Skin Analyzer',
+      settings: 'Settings – Skin Analyzer',
+    };
+    document.title = titles[flow.route];
+    if (previousRoute.current !== flow.route) {
+      const heading = document.querySelector<HTMLElement>('main h1');
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus();
+      }
+      previousRoute.current = flow.route;
+    }
+  }, [flow.route]);
   const [progress, setProgress] = useState(0);
   const { sendReset, clearReport } = stream;
   useEffect(() => {

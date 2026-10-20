@@ -10,9 +10,9 @@ vi.mock('./stream/useSkinStream', () => ({ useSkinStream: () => ({
   sendReset: mocks.reset, clearReport: mocks.clear,
 }) }));
 vi.mock('./flow/CameraPage', () => ({ CameraPage: ({ onCapture }: { onCapture: (s: unknown) => void }) =>
-  <button onClick={() => onCapture({ image: document.createElement('canvas'), header: frameFixture, report: reportFixture, width: 1280, height: 720, capturedAt: 0 })}>Capture test image</button> }));
-vi.mock('./settings/SettingsPage', () => ({ SettingsPage: ({ onInputChanged }: { onInputChanged: () => void }) => <button onClick={onInputChanged}>Change input</button> }));
-vi.mock('./flow/ResultsPage', () => ({ ResultsPage: ({ onContinue }: { onContinue: () => void }) => <button onClick={onContinue}>See treatments</button> }));
+  <><h1>Camera</h1><button onClick={() => onCapture({ image: document.createElement('canvas'), header: frameFixture, report: reportFixture, width: 1280, height: 720, capturedAt: 0 })}>Capture test image</button></> }));
+vi.mock('./settings/SettingsPage', () => ({ SettingsPage: ({ onInputChanged }: { onInputChanged: () => void }) => <><h1>Settings</h1><button onClick={onInputChanged}>Change input</button></> }));
+vi.mock('./flow/ResultsPage', () => ({ ResultsPage: ({ onContinue }: { onContinue: () => void }) => <><h1>Results</h1><button onClick={onContinue}>See treatments</button></> }));
 afterEach(() => { cleanup(); history.replaceState(null, '', '/'); vi.clearAllMocks(); });
 it('opens Start and navigates to the Camera step', () => {
   render(<App />); expect(screen.getByRole('heading', { name: /take a look/ })).toBeVisible();
@@ -55,4 +55,31 @@ it('shows the current step as partly filled on Start and Results', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Capture test image' }));
   expect(currentSegmentWidth()).toBeGreaterThan(0);
   expect(currentSegmentWidth()).toBeLessThan(100);
+});
+
+it('preserves initial focus and focuses headings with route titles on navigation', async () => {
+  render(<App />);
+  expect(screen.getByRole('heading', { level: 1 })).not.toHaveFocus();
+  expect(document.title).toBe('Start – Step 1 of 4 – Skin Analyzer');
+  fireEvent.click(screen.getByRole('button', { name: 'Start analyzing' }));
+  expect(screen.getByRole('heading', { level: 1, name: 'Camera' })).toHaveFocus();
+  expect(document.title).toBe('Camera – Step 2 of 4 – Skin Analyzer');
+  fireEvent.click(screen.getByRole('button', { name: 'Capture test image' }));
+  expect(screen.getByRole('heading', { level: 1, name: 'Results' })).toHaveFocus();
+  expect(document.title).toBe('Results – Step 3 of 4 – Skin Analyzer');
+  fireEvent.click(screen.getByRole('button', { name: 'See treatments' }));
+  expect(screen.getByRole('heading', { level: 1, name: 'Recommended treatments' })).toHaveFocus();
+  expect(document.title).toBe('Treatments – Step 4 of 4 – Skin Analyzer');
+  fireEvent.click(screen.getByRole('button', { name: 'Start a new analysis' }));
+  expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+  expect(document.title).toBe('Start – Step 1 of 4 – Skin Analyzer');
+  fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+  expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toHaveFocus();
+  expect(document.title).toBe('Settings – Skin Analyzer');
+});
+it.each(['camera', 'settings'])('sets the title on initial #%s without focusing', route => {
+  history.replaceState(null, '', `/#${route}`);
+  render(<App />);
+  expect(screen.getByRole('heading', { level: 1 })).not.toHaveFocus();
+  expect(document.title).toBe(route === 'camera' ? 'Camera – Step 2 of 4 – Skin Analyzer' : 'Settings – Skin Analyzer');
 });

@@ -9,7 +9,7 @@ it("renders a section with title, action and forwarded attributes", () => {
   const card = screen.getByRole("region", { name: "Summary" });
   expect(card.tagName).toBe("SECTION");
   expect(card).toHaveClass("ui-card", "custom");
-  expect(screen.getByRole("heading", { name: "Overview" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Overview", level: 2 })).toBeVisible();
   expect(screen.getByRole("button", { name: "Details" })).toBeVisible();
   expect(card).toHaveTextContent("Analysis ready");
 });
@@ -23,4 +23,9 @@ it("hides decorative icons and exposes titled icons", () => {
   rerender(<HomeIcon title="Home" className="custom-icon" />);
   expect(screen.getByRole("img", { name: "Home" })).toHaveClass("custom-icon");
   expect(screen.getByRole("img", { name: "Home" })).not.toHaveAttribute("aria-hidden");
+});
+
+it.each([2, 3, 4] as const)("renders card heading level %s", headingLevel => {
+  render(<Card title="Overview" headingLevel={headingLevel}>Content</Card>);
+  expect(screen.getByRole("heading", { name: "Overview", level: headingLevel })).toBeVisible();
 });
