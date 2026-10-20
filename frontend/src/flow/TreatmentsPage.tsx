@@ -19,7 +19,7 @@ function IngredientCard({ ingredient, shared }: { ingredient: Ingredient; shared
   const score = Math.round(Math.max(0, Math.min(1, ingredient.score)) * 100);
   const reasons = splitRationale(ingredient.rationale);
   const cautions = ingredient.cautions.filter(caution => !shared.includes(caution));
-  return <Card title={ingredient.name}>
+  return <Card title={ingredient.name} headingLevel={3}>
     {reasons.length > 1
       ? <ul className="ingredient-reasons">{reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul>
       : <p>{reasons[0] ?? ingredient.rationale}</p>}

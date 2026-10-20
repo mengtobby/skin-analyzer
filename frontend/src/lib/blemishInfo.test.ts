@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
-import { reportFixture } from "../protocol/fixtures";
+import { frameFixture, reportFixture } from "../protocol/fixtures";
 import type { Condition, Label } from "../protocol/types";
-import { insightFor, LABEL_INFO, ZONE_NAMES } from "./blemishInfo";
+import { areaName, insightFor, LABEL_INFO, ZONE_NAMES } from "./blemishInfo";
 
 const mappings: [Label, Condition][] = [
   ["papule", "inflammatory_acne"], ["pustule", "inflammatory_acne"], ["nodule", "inflammatory_acne"],
@@ -21,4 +21,9 @@ it("finds insights by condition and handles missing insights", () => {
   expect(insightFor("papule", { ...reportFixture, insights: [] })).toBeUndefined();
   expect(ZONE_NAMES.left_cheek).toBe("left cheek");
   expect(Object.keys(ZONE_NAMES)).toHaveLength(6);
+});
+
+it("names areas by type, zero-based type index, and plain-language zone", () => {
+  expect(areaName({ ...frameFixture.tracks[0], label: "pustule", zone: "chin" }, 0)).toBe("Pustule 1, chin");
+  expect(areaName({ ...frameFixture.tracks[0], label: "pustule", zone: "left_cheek" }, 1)).toBe("Pustule 2, left cheek");
 });
