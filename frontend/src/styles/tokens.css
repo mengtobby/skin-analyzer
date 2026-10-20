@@ -4,8 +4,10 @@
   --surface: #fff;
   --border: #ebe8e3;
   --text: #1d1b19;
-  --muted: #75716b;
-  --accent: #d4471f;
+  --muted: #6e6a64;
+  --accent: #d4471f; /* icons, wordmark, selected outlines (3:1 non-text) */
+  --accent-text: #b93c17; /* accent-coloured text such as links (4.5:1) */
+  --control-border: #8f8a82; /* text-field outlines (3:1 non-text) */
   --progress: #2563eb;
   --radius-card: 24px;
   --radius-pill: 999px;
