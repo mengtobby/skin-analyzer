@@ -2,11 +2,11 @@ import type { Report, Track } from "../protocol/types";
 import { insightFor, LABEL_INFO, ZONE_NAMES } from "../lib/blemishInfo";
 import { Badge, Card } from "../ui";
 
-export function BlemishDetail({ track, report }: { track: Track | undefined; report: Report }) {
-  if (!track) return <Card title="No blemishes stood out"><p>There are no individual areas to explore in this capture. You can still review your overall skin scores.</p></Card>;
+export function BlemishDetail({ id, track, report }: { id: string; track: Track | undefined; report: Report }) {
+  if (!track) return <Card id={id} title="No blemishes stood out"><p>There are no individual areas to explore in this capture. You can still review your overall skin scores.</p></Card>;
   const info = LABEL_INFO[track.label];
   const insight = insightFor(track.label, report);
-  return <Card className="blemish-detail" aria-label="Selected area details">
+  return <Card id={id} className="blemish-detail" aria-label="Selected area details">
     <p className="result-muted">Type</p>
     <div className="result-inline"><h2>{info.name}</h2><Badge>{ZONE_NAMES[track.zone]}</Badge></div>
     <h3>What it is</h3><p>{info.description}</p>

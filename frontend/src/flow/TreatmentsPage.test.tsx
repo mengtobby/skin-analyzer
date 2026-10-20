@@ -15,9 +15,10 @@ it("groups AM and PM products, placing shared products in both routines", () => 
   data.report.products.push({ ...data.report.products[0], id: "day", name: "Day care", routine: "AM" },
     { ...data.report.products[0], id: "night", name: "Night care", routine: "PM" });
   render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
+  expect(screen.getByRole("heading", { name: data.report.ingredients[0].name, level: 3 })).toBeVisible();
   const morning = within(screen.getByRole("region", { name: "Morning routine" }));
   const evening = within(screen.getByRole("region", { name: "Evening routine" }));
-  expect(morning.getByText("Day care")).toBeVisible();
+  expect(morning.getByRole("heading", { name: "Day care", level: 4 })).toBeVisible();
   expect(morning.queryByText("Night care")).toBeNull();
   expect(evening.getByText("Night care")).toBeVisible();
   expect(evening.queryByText("Day care")).toBeNull();

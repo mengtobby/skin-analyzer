@@ -37,7 +37,7 @@ test("guided analysis explores blemishes and treatments on a synthetic stream", 
   await analyze.click();
   await expect(page.getByRole("heading", { name: "Your results", exact: true })).toBeVisible({ timeout: telemetryTimeout });
   await expect(page.getByRole("button", { name: /, details$/ })).toHaveCount(4);
-  await page.getByRole("button", { name: "Pustule on chin, details", exact: true }).click();
+  await page.getByRole("button", { name: "Pustule 1, chin, details", exact: true }).click();
   const detail = page.getByLabel("Selected area details");
   await expect(detail.getByRole("heading", { name: "Pustule", exact: true })).toBeVisible();
   await expect(detail.getByRole("heading", { name: "What it is" })).toBeVisible();
@@ -50,7 +50,7 @@ test("guided analysis explores blemishes and treatments on a synthetic stream", 
     await expect(page.getByRole("region", { name: "All areas" }).getByRole("heading", { name: `${group} (1)`, exact: true })).toBeVisible();
   }
   for (const [name, value] of [["Redness", 46], ["Texture", 28], ["Oiliness", 12], ["Pigmentation", 34]] as const) {
-    await expect(page.getByLabel(`${name} score`)).toContainText(`${value} / 100`);
+    await expect(page.getByRole("heading", { name, exact: true }).locator("..")).toContainText(`${value} / 100`);
   }
 
   await page.getByRole("button", { name: "See treatments" }).click();
