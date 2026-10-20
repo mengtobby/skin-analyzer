@@ -10,3 +10,7 @@
 .stream-address input { width: 100%; }
 .camera-settings [role='alert'] { color: #ad321d; overflow-wrap: anywhere; }
 .camera-settings [role='status'] { color: #28724c; overflow-wrap: anywhere; }
+.camera-settings #stream-error { color: var(--accent-text); }
+.stream-address input[aria-invalid='true'] { border-color: var(--accent-text); }
+.camera-settings [role='alert']:empty,
+.camera-settings [role='status']:empty { margin: 0; }
