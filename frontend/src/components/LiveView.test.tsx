@@ -82,3 +82,11 @@ it("draws ref-held frames at device pixel ratio and cancels its animation loop",
   unmount();
   expect(cancel).toHaveBeenCalledWith(1);
 });
+
+it('exposes the canvas as a named image and hides duplicate overlay guidance', () => {
+  render(<LiveView bitmapRef={{ current: null }} headerRef={{ current: null }}
+    header={{ ...frameFixture, face: null }} connection="connected" sendReset={vi.fn()} />);
+  expect(screen.getByRole('img', { name: 'Live camera with skin detection overlays' })).toBeVisible();
+  expect(screen.getByText(/No face detected/)).toHaveAttribute('aria-hidden', 'true');
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+});
