@@ -44,8 +44,8 @@ export function LiveView({ bitmapRef, headerRef, header, connection, sendReset }
   return <section className="panel live-panel" aria-labelledby="live-title">
     <div className="panel-heading"><h2 id="live-title">Live analysis</h2></div>
     <div className="canvas-wrap" data-frame-id={header?.frame_id}>
-      <canvas ref={canvasRef} aria-label="Live camera with skin detection overlays" />
-      {(!header || !header.face || connection !== 'connected') && <p className="empty-camera" role="status">
+      <canvas ref={canvasRef} role="img" aria-label="Live camera with skin detection overlays" />
+      {(!header || !header.face || connection !== 'connected') && <p className="empty-camera" aria-hidden="true">
         {!header || connection !== 'connected' ? 'Connecting to camera...' : 'No face detected - centre your face in even, diffuse light'}
       </p>}
     </div>

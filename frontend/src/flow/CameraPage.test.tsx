@@ -25,6 +25,7 @@ it('requires connection, face and passing quality', () => {
   expect(button()).toBeDisabled();
   expect(screen.getByText('Camera connected - 25 fps', { exact: true })).toBeVisible();
   expect(screen.getByText('No face detected - centre your face in the camera.', { exact: true })).toBeVisible();
+  expect(screen.getByRole('status')).toContainElement(screen.getByText('No face detected - centre your face in the camera.', { exact: true }));
   rerender(<CameraPage stream={{ ...s, header: { ...s.header!, quality: qualityFixture } }} onCapture={onCapture} />);
   expect(button()).toBeDisabled(); expect(screen.getByText('Too dark - face a window or lamp')).toBeVisible();
   rerender(<CameraPage stream={s} onCapture={onCapture} />); expect(button()).toBeEnabled();
@@ -121,4 +122,49 @@ it('copies a frame only when a new frame arrives, into one reused canvas', () =>
   s.headerRef.current = next; s.displayHeaderRef.current = next;
   act(() => vi.advanceTimersByTime(1000));
   expect(canvases()).toBe(1);
+});
+it('keeps guidance and error regions mounted while scores and fps change', () => {
+  const s = stream();
+  const { rerender } = render(<CameraPage stream={s} onCapture={vi.fn()} />);
+  const guidance = screen.getByRole('status');
+  const alert = screen.getByRole('alert');
+  expect(alert).toBeEmptyDOMElement();
+  rerender(<CameraPage stream={{ ...s, header: { ...s.header!, quality: qualityFixture }, error: 'Stream unavailable' }} onCapture={vi.fn()} />);
+  expect(screen.getByRole('status')).toBe(guidance);
+  expect(guidance).toHaveTextContent('Too dark - face a window or lamp');
+  expect(guidance).not.toHaveTextContent(/Quality|fps/);
+  expect(screen.getByRole('alert')).toBe(alert);
+  expect(alert).toHaveTextContent('Stream unavailable');
+  expect(screen.getAllByRole('status')).toHaveLength(1);
+});
+
+it('focuses Cancel during scanning and Analyze after cancelling or an error', () => {
+  const s = stream();
+  const { rerender } = render(<CameraPage stream={s} onCapture={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  expect(screen.getByRole('button', { name: 'Cancel scan' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel scan' }));
+  expect(screen.getByRole('button', { name: 'Analyze my skin' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  const poor = { ...s.header!, face: null };
+  s.headerRef.current = poor;
+  rerender(<CameraPage stream={{ ...s, header: poor }} onCapture={vi.fn()} />);
+  act(() => vi.advanceTimersByTime(1700));
+  const analyze = screen.getByRole('button', { name: 'Analyze my skin' });
+  expect(analyze).toHaveFocus();
+  expect(analyze).toHaveAttribute('aria-disabled', 'true');
+  fireEvent.click(analyze);
+  expect(screen.queryByRole('button', { name: 'Cancel scan' })).not.toBeInTheDocument();
+});
+
+it('changes the countdown text no more than once per second in the same polite region', () => {
+  render(<CameraPage stream={stream()} onCapture={vi.fn()} />);
+  const guidance = screen.getByRole('status');
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  expect(guidance).toHaveTextContent('Hold still... 3 seconds');
+  act(() => vi.advanceTimersByTime(900));
+  expect(guidance).toHaveTextContent('Hold still... 3 seconds');
+  act(() => vi.advanceTimersByTime(100));
+  expect(guidance).toHaveTextContent('Hold still... 2 seconds');
+  expect(screen.getByRole('status')).toBe(guidance);
 });
