@@ -383,10 +383,10 @@ def build_default_runner(settings: Settings) -> PipelineRunner:
     analyzer = FrameAnalyzer(landmarker, preprocessor, detector, LesionTracker(),
                              MetricsSmoother(), mirrored=settings.mirror)
     source = create_source(settings.source, settings.width, settings.height,
-                           settings.fps, settings.mirror)
+                           settings.fps, settings.mirror, max_side=settings.max_frame_side)
     runner = PipelineRunner(settings, source, analyzer, kb, providers, detector.name, preprocessor.name)
     runner._create_source = lambda spec: create_source(
-        spec, settings.width, settings.height, settings.fps, settings.mirror)
+        spec, settings.width, settings.height, settings.fps, settings.mirror, max_side=settings.max_frame_side)
     runner._source_spec = settings.source
     runner._source_factory = lambda: runner._create_source(runner._source_spec)
     return runner

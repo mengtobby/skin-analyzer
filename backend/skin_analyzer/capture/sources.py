@@ -94,9 +94,13 @@ class FrameSource(Protocol):
 
 class _ThreadedSource:
     def __init__(self, spec: str, width: int, height: int, fps: float,
-                 mirror: bool, capture_factory: CaptureFactory | None) -> None:
+                 mirror: bool, capture_factory: CaptureFactory | None, *,
+                 max_side: int = 0) -> None:
         if width <= 0 or height <= 0 or not math.isfinite(fps) or fps <= 0:
             raise ValueError("Frame dimensions and fps must be positive")
+        if type(max_side) is not int or max_side < 0:
+            raise ValueError("max_side must be a nonnegative integer")
+        self._max_side = max_side
         self._info = SourceInfo(spec, False, width, height, float(fps), None)
         self._mirror = mirror
         self._factory = capture_factory or cv2.VideoCapture
@@ -148,6 +152,12 @@ class _ThreadedSource:
                 or frame.ndim != 3 or frame.shape[2] != 3 or frame.size == 0):
             raise ValueError("Capture must deliver nonempty uint8 BGR frames")
         timestamp = time.time()
+        height, width = frame.shape[:2]
+        if self._max_side > 0 and max(width, height) > self._max_side:
+            scale = self._max_side / max(width, height)
+            frame = cv2.resize(frame, (max(1, round(width * scale)),
+                                      max(1, round(height * scale))),
+                               interpolation=cv2.INTER_AREA)
         owned = cv2.flip(frame, 1) if self._mirror else frame.copy()
         with self._condition:
             self._sequence += 1
@@ -190,10 +200,11 @@ class _ThreadedSource:
 class CameraSource(_ThreadedSource):
     def __init__(self, index: int = 0, width: int = 1280, height: int = 720,
                  fps: int = 30, mirror: bool = True,
-                 capture_factory: CaptureFactory | None = None) -> None:
+                 capture_factory: CaptureFactory | None = None, *,
+                 max_side: int = 0) -> None:
         if not isinstance(index, int) or index < 0:
             raise ValueError("Camera index must be a nonnegative integer")
-        super().__init__(f"camera:{index}", width, height, fps, mirror, capture_factory)
+        super().__init__(f"camera:{index}", width, height, fps, mirror, capture_factory, max_side=max_side)
         self._index = index
 
     def _open(self) -> np.ndarray:
@@ -239,7 +250,8 @@ class CameraSource(_ThreadedSource):
 class NetworkStreamSource(_ThreadedSource):
     def __init__(self, url: str, width: int = 1280, height: int = 720,
                  fps: int = 30, mirror: bool = True,
-                 capture_factory: CaptureFactory | None = None) -> None:
+                 capture_factory: CaptureFactory | None = None, *,
+                 max_side: int = 0) -> None:
         try:
             if not url.isascii() or not url.isprintable():
                 raise ValueError
@@ -261,7 +273,7 @@ class NetworkStreamSource(_ThreadedSource):
         self._safe_url = safe_url
         self._secrets = self._secret_values(parsed.username, parsed.password,
                                            parsed.path, parsed.query, parsed.fragment)
-        super().__init__(f"url:{safe_url}", width, height, fps, mirror, capture_factory)
+        super().__init__(f"url:{safe_url}", width, height, fps, mirror, capture_factory, max_side=max_side)
 
     @staticmethod
     def _secret_values(username: str | None, password: str | None, path: str,
@@ -315,11 +327,12 @@ class NetworkStreamSource(_ThreadedSource):
 
 class VideoFileSource(_ThreadedSource):
     def __init__(self, path: str | Path, fps: int = 30, mirror: bool = True,
-                 capture_factory: CaptureFactory | None = None) -> None:
+                 capture_factory: CaptureFactory | None = None, *,
+                 max_side: int = 0) -> None:
         if not str(path).strip():
             raise ValueError("File path must not be empty")
         self._path = str(path)
-        super().__init__(f"file:{path}", 1280, 720, fps, mirror, capture_factory)
+        super().__init__(f"file:{path}", 1280, 720, fps, mirror, capture_factory, max_side=max_side)
 
     def _stream(self) -> None:
         image = Path(self._path).suffix.lower() in {".png", ".jpg", ".jpeg"}
@@ -357,14 +370,15 @@ class VideoFileSource(_ThreadedSource):
 
 def create_source(spec: str, width: int = 1280, height: int = 720,
                   fps: int = 30, mirror: bool = True,
-                  capture_factory: CaptureFactory | None = None) -> FrameSource:
+                  capture_factory: CaptureFactory | None = None, *,
+                  max_side: int = 0) -> FrameSource:
     if not isinstance(spec, str):
         raise ValueError("Source specification must be a string")
     kind, separator, value = spec.partition(":")
     if separator and kind == "url":
-        return NetworkStreamSource(value, width, height, fps, mirror, capture_factory)
+        return NetworkStreamSource(value, width, height, fps, mirror, capture_factory, max_side=max_side)
     if separator and kind == "camera" and value.isascii() and value.isdecimal():
-        return CameraSource(int(value), width, height, fps, mirror, capture_factory)
+        return CameraSource(int(value), width, height, fps, mirror, capture_factory, max_side=max_side)
     if separator and kind == "file" and value.strip():
-        return VideoFileSource(value, fps, mirror, capture_factory)
+        return VideoFileSource(value, fps, mirror, capture_factory, max_side=max_side)
     raise ValueError(f"Invalid source specification: {spec!r}")
