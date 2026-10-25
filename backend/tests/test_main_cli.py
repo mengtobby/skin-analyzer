@@ -168,3 +168,35 @@ def test_dev_default_and_invalid_environment(monkeypatch):
 def test_dev_cli(monkeypatch, tmp_path, environment, argv, expected):
     settings = replace(Settings(), dev=environment, settings_file=tmp_path / "absent.json")
     assert _run_without_server(monkeypatch, settings, argv).dev is expected
+
+@pytest.mark.parametrize("value", [0, 320, 640, 1280])
+def test_frame_cap_environment_and_cli(monkeypatch, tmp_path, value):
+    monkeypatch.setenv("SKIN_MAX_FRAME_SIDE", str(value))
+    settings = replace(Settings.from_env(), settings_file=tmp_path / "absent.json")
+    assert settings.max_frame_side == value
+    assert _run_without_server(monkeypatch, settings, []).max_frame_side == value
+    assert _run_without_server(monkeypatch, settings, ["--max-frame-side", "960"]).max_frame_side == 960
+
+
+@pytest.mark.parametrize("value", [-1, 1, 319, True, 1280.0, "1280"])
+def test_frame_cap_settings_validation(value):
+    with pytest.raises(ValueError, match="max_frame_side"):
+        Settings(max_frame_side=value)
+
+
+@pytest.mark.parametrize("raw", ["-1", "319", "bad", "1280.5"])
+def test_frame_cap_invalid_environment(monkeypatch, raw):
+    monkeypatch.setenv("SKIN_MAX_FRAME_SIDE", raw)
+    with pytest.raises(ValueError, match="SKIN_MAX_FRAME_SIDE"):
+        Settings.from_env()
+
+
+@pytest.mark.parametrize("raw", ["-1", "319", "bad"])
+def test_frame_cap_invalid_cli(monkeypatch, tmp_path, raw):
+    settings = replace(Settings(), settings_file=tmp_path / "absent.json")
+    with pytest.raises((ValueError, SystemExit)):
+        _run_without_server(monkeypatch, settings, ["--max-frame-side", raw])
+
+
+def test_frame_cap_default():
+    assert Settings().max_frame_side == 1280
