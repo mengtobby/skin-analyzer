@@ -471,3 +471,58 @@ def test_network_short_path_segments_do_not_garble_errors() -> None:
     source = NetworkStreamSource(url, capture_factory=lambda *args: None)
     text = source._error_text(RuntimeError(f"Failed {url} from 192.168.1.20 (code 1)"))
     assert text == "Failed rtsp://cam.local:554/*** from 192.168.1.20 (code 1)"
+
+@pytest.mark.parametrize("shape,cap,expected", [
+    ((2160, 3840), 1280, (720, 1280)),
+    ((1920, 1080), 1280, (1280, 720)),
+    ((720, 1280), 1280, (720, 1280)),
+    ((240, 320), 1280, (240, 320)),
+    ((1080, 1920), 0, (1080, 1920)),
+    ((333, 1001), 320, (106, 320)),
+    ((1, 1000), 320, (1, 320)),
+])
+@pytest.mark.parametrize("mirror", [False, True])
+def test_frame_cap_publish(monkeypatch, shape, cap, expected, mirror):
+    frame = np.random.default_rng(1).integers(0, 256, (*shape, 3), dtype=np.uint8)
+    original = frame.copy()
+    resize, flip = cv2.resize, cv2.flip
+    calls, flipped_shapes = [], []
+
+    def tracked_resize(*args, **kwargs):
+        calls.append(kwargs.get("interpolation"))
+        return resize(*args, **kwargs)
+
+    def tracked_flip(frame, code):
+        flipped_shapes.append(frame.shape[:2])
+        return flip(frame, code)
+
+    monkeypatch.setattr(cv2, "resize", tracked_resize)
+    monkeypatch.setattr(cv2, "flip", tracked_flip)
+    source = CameraSource(mirror=mirror, max_side=cap)
+    source._publish(frame)
+    published, _, _ = source.read(0)
+    wanted = resize(frame, (expected[1], expected[0]), interpolation=cv2.INTER_AREA) if expected != shape else frame
+    if mirror:
+        wanted = flip(wanted, 1)
+    assert flipped_shapes == ([expected] if mirror else [])
+    np.testing.assert_array_equal(published, wanted)
+    np.testing.assert_array_equal(frame, original)
+    assert not np.shares_memory(frame, published)
+    assert calls == ([cv2.INTER_AREA] if expected != shape else [])
+    assert (source.info().height, source.info().width) == expected
+
+
+@pytest.mark.parametrize("spec,cls", [("camera:0", CameraSource),
+    ("file:video.mp4", VideoFileSource), ("url:http://phone/video", NetworkStreamSource)])
+def test_create_source_forwards_cap(spec, cls):
+    source = create_source(spec, max_side=640)
+    assert isinstance(source, cls)
+    source._publish(np.zeros((1080, 1920, 3), np.uint8))
+    assert source.read(0)[0].shape == (360, 640, 3)
+    assert create_source(spec)._max_side == 0
+
+
+@pytest.mark.parametrize("value", [-1, 1.5, True, "1280"])
+def test_capture_rejects_invalid_cap(value):
+    with pytest.raises(ValueError, match="max_side"):
+        CameraSource(max_side=value)

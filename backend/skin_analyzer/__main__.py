@@ -60,7 +60,7 @@ def main() -> None:
     parser.add_argument("--port", type=int)
     parser.add_argument("--detector", choices=("auto", "classical", "onnx"))
     parser.add_argument("--preprocess", choices=("auto", "cpu", "cuda"))
-    for name in ("width", "height", "fps", "jpeg-quality"):
+    for name in ("width", "height", "fps", "jpeg-quality", "max-frame-side"):
         parser.add_argument(f"--{name}", type=int)
     parser.add_argument("--report-interval-s", type=float)
     parser.add_argument("--extra-origins", type=lambda raw: tuple(
@@ -71,7 +71,7 @@ def main() -> None:
     args = parser.parse_args()
     overrides = {key: getattr(args, key) for key in
                  ("dev", "source", "host", "port", "detector", "preprocess", "width", "height",
-                  "fps", "jpeg_quality", "report_interval_s", "extra_origins") if getattr(args, key) is not None}
+                  "fps", "max_frame_side", "jpeg_quality", "report_interval_s", "extra_origins") if getattr(args, key) is not None}
     if args.no_mirror:
         overrides["mirror"] = False
     settings = replace(Settings.from_env(), **overrides)

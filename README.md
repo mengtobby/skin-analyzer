@@ -100,6 +100,7 @@ The wire format is specified in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `--detector` | `auto` | `classical`, `onnx`, or `auto` (ONNX model if present) |
 | `--preprocess` | `auto` | `cpu`, `cuda`, or `auto` |
 | `--width/--height/--fps` | 1280×720 @ 30 | capture request |
+| `--max-frame-side` | 1280 | `0` = off; larger incoming frames (including 1080p and 4K phone streams) are downscaled. Analysis quality does not improve above this because the face is analysed on a fixed-size canvas. |
 | `--no-mirror` | off | the selfie mirror view is the default |
 | `--host/--port` | 127.0.0.1:8000 | binding to a non-loopback host exposes your camera to the network; the server warns |
 | `--extra-origins` | — | extra trusted browser origins (comma-separated) |
@@ -112,6 +113,8 @@ Install an IP-camera app on your phone and keep the phone and laptop on the same
 ```powershell
 .\start.ps1 -Source url:http://<phone-ip>:<port>/video
 ```
+
+Phone streams are capped at a 1280 px long side by default; use `--max-frame-side` or `SKIN_MAX_FRAME_SIDE` to change it (`0` disables).
 
 The exact stream path depends on the app. The HTTP stream is unencrypted over the local network, so use it only on trusted Wi-Fi. A password in the URL (`user:password@` or query parameters such as `?token=`) is shown as `***` in logs and on `/api/health`. Apps exposing the phone as a virtual webcam work as `camera:<index>` instead.
 

@@ -18,6 +18,7 @@ class Settings:
     width: int = 1280
     height: int = 720
     fps: int = 30
+    max_frame_side: int = 1280
     mirror: bool = True
     preprocess: str = "auto"
     detector: str = "auto"
@@ -36,6 +37,8 @@ class Settings:
             raise ValueError("source and host must be nonempty")
         if any(type(v) is not int or v <= 0 for v in (self.width, self.height, self.fps)):
             raise ValueError("width, height and fps must be positive integers")
+        if type(self.max_frame_side) is not int or (self.max_frame_side != 0 and self.max_frame_side < 320):
+            raise ValueError("max_frame_side must be 0 or an integer >= 320")
         if type(self.port) is not int or not 1 <= self.port <= 65535:
             raise ValueError("port must be between 1 and 65535")
         if self.detector not in {"auto", "classical", "onnx"}:
@@ -57,7 +60,7 @@ class Settings:
         converters = {
             "settings_file": Path, "source": str, "host": str, "detector": str, "preprocess": str,
             "port": int, "width": int, "height": int, "fps": int,
-            "jpeg_quality": int, "report_interval_s": float,
+            "max_frame_side": int, "jpeg_quality": int, "report_interval_s": float,
             "extra_origins": lambda raw: tuple(x.strip() for x in raw.split(",") if x.strip()),
         }
         for key, convert in converters.items():
