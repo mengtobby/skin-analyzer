@@ -26,3 +26,20 @@ def test_runner_cap_startup_switch_and_restart_factory(monkeypatch, cap):
     restarted = runner._source_factory()
     assert restarted._max_side == cap
     assert restarted.info().spec == "camera:1"
+
+
+def test_info_reports_capped_size_before_first_frame():
+    source = CameraSource(0, 3840, 2160, 30, mirror=False, capture_factory=lambda *a: None, max_side=1280)
+    info = source.info()
+    assert (info.width, info.height) == (1280, 720)
+    portrait = CameraSource(0, 1080, 1920, 30, mirror=False, capture_factory=lambda *a: None, max_side=1280)
+    assert (portrait.info().width, portrait.info().height) == (720, 1280)
+
+
+def test_resized_unmirrored_frame_is_published_without_extra_copy(monkeypatch):
+    from skin_analyzer.capture import sources
+    resized = np.zeros((720, 1280, 3), np.uint8)
+    monkeypatch.setattr(sources.cv2, "resize", lambda *args, **kwargs: resized)
+    source = CameraSource(0, 1280, 720, 30, mirror=False, capture_factory=lambda *a: None, max_side=1280)
+    source._publish(np.zeros((2160, 3840, 3), np.uint8))
+    assert source.read(0)[0] is resized

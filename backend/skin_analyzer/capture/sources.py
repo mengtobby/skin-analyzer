@@ -92,6 +92,14 @@ class FrameSource(Protocol):
     def close(self) -> None: ...
 
 
+def _capped_size(width: int, height: int, max_side: int) -> tuple[int, int]:
+    """(width, height) scaled so the long side is at most max_side (0 = no cap)."""
+    if max_side <= 0 or max(width, height) <= max_side:
+        return width, height
+    scale = max_side / max(width, height)
+    return max(1, round(width * scale)), max(1, round(height * scale))
+
+
 class _ThreadedSource:
     def __init__(self, spec: str, width: int, height: int, fps: float,
                  mirror: bool, capture_factory: CaptureFactory | None, *,
@@ -101,6 +109,8 @@ class _ThreadedSource:
         if type(max_side) is not int or max_side < 0:
             raise ValueError("max_side must be a nonnegative integer")
         self._max_side = max_side
+        # Report the size frames will be published at, not the raw request.
+        width, height = _capped_size(width, height, max_side)
         self._info = SourceInfo(spec, False, width, height, float(fps), None)
         self._mirror = mirror
         self._factory = capture_factory or cv2.VideoCapture
@@ -153,12 +163,12 @@ class _ThreadedSource:
             raise ValueError("Capture must deliver nonempty uint8 BGR frames")
         timestamp = time.time()
         height, width = frame.shape[:2]
-        if self._max_side > 0 and max(width, height) > self._max_side:
-            scale = self._max_side / max(width, height)
-            frame = cv2.resize(frame, (max(1, round(width * scale)),
-                                      max(1, round(height * scale))),
-                               interpolation=cv2.INTER_AREA)
-        owned = cv2.flip(frame, 1) if self._mirror else frame.copy()
+        size = _capped_size(width, height, self._max_side)
+        resized = size != (width, height)
+        if resized:
+            frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
+        # A resized frame is already a fresh array; only an untouched one aliases the capture buffer.
+        owned = cv2.flip(frame, 1) if self._mirror else (frame if resized else frame.copy())
         with self._condition:
             self._sequence += 1
             self._slot = (owned, timestamp, self._sequence)
