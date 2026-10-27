@@ -78,13 +78,21 @@ it("shows a single percentage inside the ring and keeps native progress at one p
   const { container } = render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
   const progress = screen.getByRole("progressbar", { name: data.report.ingredients[0].name + " recommendation match" });
   expect(progress).toHaveClass("sr-only");
-  expect(container.querySelector(".ingredient-ring > span")).toHaveTextContent("80%");
+  expect(container.querySelector(".ingredient-header .ui-score-ring text")).toHaveTextContent("80%");
   expect(container.querySelector(".ingredient-score")?.children).toHaveLength(2);
   const css = readFileSync(new NodeURL("./results.css", import.meta.url), "utf-8");
   expect(css).not.toMatch(/\.analysis-results progress\s*\{/);
   expect(css).toMatch(/progress:not\(\.sr-only\)\s*\{/);
   expect(css).toMatch(/progress\.sr-only\s*\{\s*width: 1px; height: 1px;/);
-  expect(css).toMatch(/\.ingredient-ring \.ui-score-ring text\s*\{\s*display: none;/);
-  expect(css).toMatch(/\.ingredient-card \.ui-card__header h3\s*\{\s*margin-top: 0;/);
-  expect(css).toMatch(/\.ingredient-card \.ingredient-score\s*\{\s*margin-top: auto;/);
+  expect(container.querySelectorAll(".ingredient-header .ui-score-ring text")).toHaveLength(data.report.ingredients.length);
+  expect(css).toMatch(/\.analysis-results \.ingredient-header h3\s*\{\s*margin: 0; font-size: 1\.25rem; font-weight: 600;/);
+  expect(screen.getByRole("heading", { name: data.report.ingredients[0].name }).closest("header")?.querySelector(".ui-score-ring")).toBeInTheDocument();
+});
+
+
+it("uses the same reason list for single and multiple rationales", () => {
+  const data = snapshot();
+  render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
+  const card = screen.getByRole("heading", { name: data.report.ingredients[0].name }).closest("section")!;
+  expect(card.querySelector(".ingredient-reasons > li")).toHaveTextContent(data.report.ingredients[0].rationale);
 });

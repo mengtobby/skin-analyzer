@@ -98,3 +98,14 @@ it('draws a decorative leader and dot in the same container coordinates', () => 
   rerender(<LinkedFloatingBadge x={20} y={40} leader={{ x: Infinity, y: 60 }}>26</LinkedFloatingBadge>);
   expect(container.querySelector('svg')).toBeNull();
 });
+
+it('omits all SVG text when the decorative score value is disabled', () => {
+  const { container, rerender } = render(<ScoreRing value={41} label="Redness" decorative showValue={false} />);
+  expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  expect(container.querySelector('text')).toBeNull();
+  rerender(<ScoreRing value={null} label="Redness" decorative showValue={false} />);
+  expect(container.querySelector('text')).toBeNull();
+  const css = readFileSync(new NodeURL('./Primitives.css', import.meta.url), 'utf8');
+  expect(css).toMatch(/__track\s*\{\s*stroke: var\(--ring-track\)/);
+  expect(css).toMatch(/__arc\s*\{\s*stroke: var\(--apricot\); stroke-linecap: round/);
+});

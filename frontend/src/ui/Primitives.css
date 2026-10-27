@@ -8,8 +8,8 @@
 .ui-chip-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .ui-score-ring { overflow: visible; flex-shrink: 0; }
 .ui-score-ring circle { fill: none; stroke-width: 6; }
-.ui-score-ring__track { stroke: var(--border); }
-.ui-score-ring__arc { stroke: var(--accent); stroke-linecap: round; animation: score-reveal 1.2s cubic-bezier(.16, 1, .3, 1) both; }
+.ui-score-ring__track { stroke: var(--ring-track); }
+.ui-score-ring__arc { stroke: var(--apricot); stroke-linecap: round; animation: score-reveal 1.2s cubic-bezier(.16, 1, .3, 1) both; }
 .ui-score-ring text { fill: var(--text); font: 600 25px var(--font-sans); font-variant-numeric: tabular-nums; }
 .ui-floating-badge { position: absolute; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--radius-pill); background: var(--ink); color: white; box-shadow: var(--shadow-float); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .ui-floating-badge__icon { color: var(--peach); display: flex; }

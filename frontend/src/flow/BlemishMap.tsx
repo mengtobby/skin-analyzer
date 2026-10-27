@@ -5,13 +5,15 @@ import type { Track } from "../protocol/types";
 import { meshFromFace } from "../overlay/mesh";
 import { SparkleIcon } from "../ui";
 import { FloatingBadge } from "../ui/FloatingBadge";
-import { layoutBadges } from "../lib/badgeLayout";
+import { layoutBadges, useBadgeMeasurements } from "../lib/badgeLayout";
 import { areaName } from "../lib/blemishInfo";
 
 export function BlemishMap({ snapshot, selected, onSelect, detailId, tracks = snapshot.header.tracks }: {
   tracks?: Track[]; detailId: string; snapshot: AnalysisSnapshot; selected: number | undefined; onSelect: (id: number) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const badgeSizes = useBadgeMeasurements(mapRef, snapshot);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     try {
@@ -24,8 +26,11 @@ export function BlemishMap({ snapshot, selected, onSelect, detailId, tracks = sn
   const track = tracks.find(item => item.id === selected);
   const face = snapshot.header.face;
   const mesh = face ? meshFromFace(face) : { points: [], edges: [] };
-  const placement = track && face ? layoutBadges([{ id: track.id, x: track.bbox[0] + track.bbox[2] / 2, y: track.bbox[1] + track.bbox[3] / 2 }], face.bbox, snapshot)[0] : undefined;
-  return <div className="blemish-map" style={{ aspectRatio: `${snapshot.width}/${snapshot.height}`,
+  const badgeText = track ? `${areaName(track, snapshot.header.tracks.slice(0, snapshot.header.tracks.indexOf(track)).filter(item => item.label === track.label).length)} ${Math.round(track.confidence * 100)}%` : '';
+  const placement = track && face ? layoutBadges([{ id: track.id, x: track.bbox[0] + track.bbox[2] / 2, y: track.bbox[1] + track.bbox[3] / 2,
+    width: badgeSizes.widths[0] || (60 + badgeText.length * 8) / badgeSizes.scale,
+  }], face.bbox, snapshot, { badgeHeight: badgeSizes.height, margin: 8 / badgeSizes.scale })[0] : undefined;
+  return <div ref={mapRef} className="blemish-map" style={{ aspectRatio: `${snapshot.width}/${snapshot.height}`,
     "--badge-space": placement ? `${(placement.side === "left" ? placement.x : snapshot.width - placement.x) / snapshot.width * 100}%` : undefined } as CSSProperties}>
     <canvas ref={canvas} width={snapshot.width} height={snapshot.height} role="img" aria-label={`Captured photo with ${tracks.length} marked areas`} />
     {failed && <p className="map-error" role="status">The captured image could not be displayed. Explore the areas below.</p>}
