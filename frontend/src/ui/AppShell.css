@@ -1,4 +1,4 @@
-.ui-shell__header { display: flex; align-items: center; gap: 32px; min-height: 80px; max-width: 1180px; margin: 20px auto 0; padding: 16px 24px; background: var(--surface); border: 1px solid rgb(255 255 255 / 85%); border-radius: var(--radius-pill); box-shadow: var(--shadow-card); }
+.ui-shell__header { position: relative; isolation: isolate; z-index: 40; display: flex; align-items: center; gap: 32px; min-height: 80px; max-width: 1180px; margin: 20px auto 0; padding: 16px 24px; background: var(--surface); border: 1px solid rgb(255 255 255 / 85%); border-radius: var(--radius-pill); box-shadow: var(--shadow-card); }
 .ui-shell__wordmark { color: var(--text); text-decoration: none; font-size: 25px; font-weight: 650; letter-spacing: -.035em; white-space: nowrap; }
 .ui-shell__wordmark > span { color: var(--accent); }
 .ui-shell__nav { display: flex; align-items: center; gap: 8px; }
@@ -9,7 +9,10 @@
 .ui-shell__icon svg { width: 21px; height: 21px; }
 .ui-shell__right { display: flex; align-items: center; margin-left: auto; }
 .ui-shell__main { width: 100%; max-width: 1180px; margin: 0 auto; padding: 48px 32px 64px; }
-@supports (backdrop-filter: blur(1px)) { .ui-shell__header { background: var(--surface-glass); backdrop-filter: blur(var(--blur)) saturate(1.2); } }
+@supports (backdrop-filter: blur(1px)) {
+  .ui-shell__header { background: transparent; }
+  .ui-shell__header::before { content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none; background: var(--surface-glass); backdrop-filter: blur(var(--blur)) saturate(1.2); }
+}
 @media (max-width: 1220px) { .ui-shell__header { margin-inline: 20px; } }
 @media (max-width: 900px) { .ui-shell__header { gap: 16px; flex-wrap: wrap; } }
 @media (max-width: 639px) {
