@@ -96,3 +96,28 @@ it("uses the same reason list for single and multiple rationales", () => {
   const card = screen.getByRole("heading", { name: data.report.ingredients[0].name }).closest("section")!;
   expect(card.querySelector(".ingredient-reasons > li")).toHaveTextContent(data.report.ingredients[0].rationale);
 });
+
+it("gives long ingredient titles a full-width row above the visible match row", () => {
+  const data = snapshot();
+  data.report.ingredients[0].name = "Broad-spectrum sunscreen SPF 30+";
+  render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
+  const title = screen.getByRole("heading", { name: data.report.ingredients[0].name });
+  const header = title.closest("header")!;
+  const match = header.querySelector(".ingredient-score")!;
+  expect(title.parentElement).toBe(header);
+  expect(title.nextElementSibling).toBe(match);
+  expect(match).not.toContainElement(title);
+  expect(within(match as HTMLElement).getByText("Recommendation match")).not.toHaveClass("sr-only");
+  expect(screen.getByRole("progressbar", { name: data.report.ingredients[0].name + " recommendation match" })).toHaveAttribute("value", "80");
+
+  // JSDOM does not lay out grid tracks; verify the shared two-line header contract.
+  const css = readFileSync(new NodeURL("./results.css", import.meta.url), "utf-8");
+  const headerStyles = css.match(/\.ingredient-header\s*\{([^}]+)\}/)![1];
+  expect(headerStyles).toMatch(/display: grid;/);
+  expect(headerStyles).toMatch(/grid-template-columns: minmax\(0, 1fr\);/);
+  expect(headerStyles).toMatch(/grid-template-rows: minmax\(3\.5rem, auto\) auto;/);
+  const titleStyles = css.match(/\.analysis-results \.ingredient-header h3\s*\{([^}]+)\}/)![1];
+  expect(titleStyles).toMatch(/hyphens: manual;/);
+  expect(titleStyles).toMatch(/overflow-wrap: normal;/);
+  expect(titleStyles).not.toMatch(/hyphens: auto|overflow-wrap: anywhere|word-break: break-all/);
+});
