@@ -82,13 +82,15 @@ export function CameraInputSection({ onInputChanged }: SettingsSectionProps) {
   const description = ["stream-help", invalidUrl && "stream-error", serverUrlError && "camera-input-error"]
     .filter(Boolean).join(" ");
   return <div className="camera-settings">
-    <p>Current input: <strong>{source ? sourceLabel(source) : "Loading current input…"}</strong></p>
+    <div className="camera-input-heading">
+      <p>Current input: <strong>{source ? sourceLabel(source) : "Loading current input…"}</strong></p>
+      <button disabled={pending || scanning} onClick={() => rescan((n) => n + 1)}>Rescan</button>
+    </div>
     <p id="camera-input-error" role="alert">{error}</p>
     <p id="camera-scan-error" role="alert">{scanError}</p>
     <div className="camera-scan">
       <span role="status">{scanning ? "Scanning for cameras…" : ""}</span>
       {!scanning && cameras.length === 0 && <span className="muted">No local cameras found.</span>}
-      <button disabled={pending || scanning} onClick={() => rescan((n) => n + 1)}>Rescan</button>
     </div>
     <fieldset disabled={pending || !source}>
       <legend>Choose an input</legend>
