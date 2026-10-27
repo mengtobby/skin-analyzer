@@ -111,7 +111,7 @@ export function CameraInputSection({ onInputChanged }: SettingsSectionProps) {
     </fieldset>
     <p id="stream-error" role="alert">{selection === "url" && invalidUrl ?
       "Enter an address that starts with http://, https:// or rtsp://" : ""}</p>
-    <button disabled={pending || scanning || !source || !changed} onClick={() => void apply()}>Apply</button>
+    <button className="settings-apply" disabled={pending || scanning || !source || !changed} onClick={() => void apply()}>Apply</button>
     <p role="status">{pending ? "Connecting… this can take a few seconds" : ""}</p>
     <p role="status">{status}</p>
   </div>;
