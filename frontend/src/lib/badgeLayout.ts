@@ -1,36 +1,50 @@
-import { useLayoutEffect, useState, type RefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 export type BadgePlacement = { id: string | number; anchorX: number; anchorY: number; x: number; y: number; side: 'left' | 'right' };
 
-/** Measure in image pixels; constrain wrapping before measuring to fit narrow frames. */
-export function useBadgeMeasurements(ref: RefObject<HTMLDivElement>, frame: { width: number; height: number }) {
+/** Measure only when content or image/container dimensions change. */
+export function useBadgeMeasurements(ref: RefObject<HTMLDivElement>, frame: { width: number; height: number }, labels: { id: string | number; text: string }[]) {
+  const [container, setContainer] = useState({ width: 0, height: 0 });
   const [sizes, setSizes] = useState<{ widths: number[]; height: number; scale: number }>({ widths: [], height: 44, scale: 1 });
+  const cache = useRef(new Map<string, { width: number; height: number }>());
+  const key = JSON.stringify(labels.map(({ id, text }) => [id, text]));
   useLayoutEffect(() => {
     const area = ref.current;
-    if (!area || frame.width <= 0 || frame.height <= 0) return;
-    const badges = Array.from(area.querySelectorAll<HTMLElement>('.ui-floating-badge'));
-    const measure = () => {
-      const bounds = area.getBoundingClientRect();
-      const scale = Math.min(bounds.width / frame.width, bounds.height / frame.height);
-      if (!Number.isFinite(scale) || scale <= 0) return;
-      badges.forEach(badge => {
-        badge.style.maxWidth = `${Math.max(1, bounds.width - 16)}px`;
-        badge.style.boxSizing = 'border-box';
-        badge.style.whiteSpace = 'normal';
-        badge.style.overflowWrap = 'anywhere';
-      });
-      const rects = badges.map(badge => badge.getBoundingClientRect());
-      const widths = rects.map(rect => rect.width / scale);
-      const height = Math.max(44, ...rects.map(rect => rect.height)) / scale;
-      setSizes(previous => previous.scale === scale && previous.height === height && previous.widths.length === widths.length && widths.every((width, index) => width === previous.widths[index]) ? previous : { widths, height, scale });
+    if (!area) return;
+    const update = (width: number, height: number) => {
+      if (!Number.isFinite(width) || !Number.isFinite(height)) return;
+      setContainer(previous => previous.width === width && previous.height === height ? previous : { width, height });
     };
-    measure();
-    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure);
+    const bounds = area.getBoundingClientRect();
+    update(bounds.width, bounds.height);
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(entries => {
+      const bounds = entries.find(entry => entry.target === area)?.contentRect;
+      if (bounds) update(bounds.width, bounds.height);
+    });
     observer?.observe(area);
-    badges.forEach(badge => observer?.observe(badge));
-    window.addEventListener('resize', measure);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
-  });
+    return () => observer?.disconnect();
+  }, [ref]);
+  useLayoutEffect(() => { cache.current.clear(); }, [container.width, container.height]);
+  useLayoutEffect(() => {
+    const area = ref.current;
+    const scale = Math.min(container.width / frame.width, container.height / frame.height);
+    if (!area || !Number.isFinite(scale) || scale <= 0 || frame.width <= 0 || frame.height <= 0) return;
+    const content = JSON.parse(key) as [string | number, string][];
+    const badges = Array.from(area.querySelectorAll<HTMLElement>('.ui-floating-badge'));
+    const measured = content.map(([, text], index) => {
+      const cached = cache.current.get(text);
+      if (cached) return cached;
+      const badge = badges[index];
+      if (!badge) return { width: 0, height: 44 };
+      const rect = badge.getBoundingClientRect();
+      const size = { width: Math.max(rect.width, badge.scrollWidth), height: rect.height };
+      cache.current.set(text, size);
+      return size;
+    });
+    const widths = measured.map(size => size.width / scale);
+    const height = Math.max(44, ...measured.map(size => size.height)) / scale;
+    setSizes(previous => previous.scale === scale && previous.height === height && previous.widths.length === widths.length && widths.every((width, index) => width === previous.widths[index]) ? previous : { widths, height, scale });
+  }, [ref, key, frame.width, frame.height, container.width, container.height]);
   return sizes;
 }
 
