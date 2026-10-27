@@ -15,6 +15,15 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
+it("groups Rescan with the current input rather than an empty scan status", async () => {
+  render(<CameraInputSection />);
+  await screen.findByText("Camera 1");
+  const button = screen.getByRole("button", { name: "Rescan" });
+  expect(button.parentElement).toHaveClass("camera-input-heading");
+  expect(button.parentElement).toContainElement(screen.getByText(/Current input:/));
+  expect(button.parentElement?.querySelector('[role="status"]')).toBeNull();
+});
+
 it("scans, marks the active camera, disables unchanged input and rescans", async () => {
   render(<CameraInputSection />);
   expect(screen.getByText("Scanning for cameras…")).toBeVisible();

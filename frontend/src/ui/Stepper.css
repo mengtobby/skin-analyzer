@@ -5,7 +5,7 @@
 button.ui-stepper__label:hover { color: var(--progress); background: transparent; }
 .ui-stepper__marker { display: flex; align-items: center; height: 16px; }
 .ui-stepper__marker > span { width: 5px; height: 5px; border-radius: 50%; background: var(--peach); outline: 1px solid var(--accent); }
-.ui-stepper__segment { display: block; height: 4px; border-radius: var(--radius-pill); background: var(--border); overflow: hidden; }
-.ui-stepper__segment > span { display: block; height: 100%; border-radius: inherit; background: var(--progress); transition: width 300ms ease-out; }
+.ui-stepper__segment { display: block; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--border) 55%, transparent); overflow: hidden; }
+.ui-stepper__segment > span { display: block; height: 100%; border-radius: inherit; background: var(--ink); opacity: .85; transition: width 300ms ease-out; }
 @media (max-width: 640px) { .ui-stepper ol { gap: 8px; } .ui-stepper__label { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .ui-stepper__segment > span { transition: none; } }

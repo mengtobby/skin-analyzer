@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node -e \"try { require.resolve('@fontsource-variable/urbanist') } catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; const result = require('node:child_process').spawnSync(process.execPath, [process.env.npm_execpath, 'install', '--ignore-scripts', '--no-save', '--package-lock=false', '--no-audit', '--no-fund', '--fetch-retries=0', '@fontsource-variable/urbanist@5.3.0'], { stdio: 'inherit' }); if (result.error) throw result.error; process.exit(result.status === null ? 1 : result.status); }\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

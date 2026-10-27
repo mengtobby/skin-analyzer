@@ -47,7 +47,8 @@ export function ResultsPage({ snapshot, onContinue, onRetake }: {
     </div><BlemishDetail id={detailId} track={track} report={snapshot.report} /></div>
     <section><h2>Your skin at a glance</h2><p className="result-muted">Appearance scores from this capture. Higher values mean more visible signs.</p>
       <SkinScores metrics={snapshot.header.metrics} /></section>
-    <footer className="result-actions"><Button variant="secondary" icon={<RefreshIcon />} onClick={onRetake}>Retake</Button>
-      <button type="button" className="recommendation-row" onClick={onContinue}><span className="recommendation-icon" aria-hidden="true"><SparkleIcon /></span><span>See treatments</span><span className="recommendation-arrow" aria-hidden="true"><ArrowRightIcon /></span></button></footer>
+    <footer className="result-actions">
+      <button type="button" className="recommendation-row" onClick={onContinue}><span className="recommendation-icon" aria-hidden="true"><SparkleIcon /></span><span>See treatments</span><span className="recommendation-arrow" aria-hidden="true"><ArrowRightIcon /></span></button>
+      <Button variant="secondary" icon={<RefreshIcon />} onClick={onRetake}>Retake</Button></footer>
   </div>;
 }

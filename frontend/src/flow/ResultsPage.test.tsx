@@ -97,6 +97,7 @@ it("filters markers and list groups, selects a visible area, and restores all ar
   const filters = within(screen.getByRole("group", { name: "Filter areas" }));
   expect(filters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
   fireEvent.click(filters.getByRole("button", { name: LABEL_INFO.comedone.plural }));
+  expect(screen.getByRole("img", { name: "Captured photo with 1 marked areas" })).toBeVisible();
   expect(screen.queryByRole("button", { name: "Papule 1, chin, details" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Papule 1, chin" })).toBeNull();
   expect(screen.queryByRole("heading", { name: /Papules/ })).toBeNull();
@@ -118,7 +119,7 @@ it("shows the selected marker's real name and confidence in a floating badge", (
   fireEvent.click(screen.getByRole("button", { name: "Comedone 1, left cheek, details" }));
   expect(badge).toHaveTextContent("Comedone 1, left cheek");
   expect(badge).toHaveTextContent("67%");
-  expect(screen.getByRole("img", { name: "Redness 41 out of 100" })).toBeVisible();
+  expect(within(screen.getByRole("region", { name: "Overall skin scores" })).queryByRole("img")).toBeNull();
   expect(screen.getByRole("heading", { name: "Redness" }).parentElement).toHaveTextContent("41 / 100");
 });
 
@@ -128,7 +129,32 @@ it("renders the captured zone mesh beneath the interactive markers", () => {
   const { container } = render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
   const mesh = container.querySelector(".scan-mesh")!;
   expect(mesh.closest("svg")).toHaveAttribute("aria-hidden", "true");
-  expect(mesh.querySelectorAll("circle")).toHaveLength(4);
-  expect(mesh.querySelectorAll("line")).toHaveLength(6);
+  expect(mesh.querySelectorAll("circle")).toHaveLength(22);
+  expect(mesh.querySelectorAll("line")).toHaveLength(42);
+  expect(resultsCss).toMatch(/\.scan-mesh line\s*\{[^}]*stroke-opacity: \.75;[^}]*stroke-dasharray: 3 4;/);
   expect(screen.getAllByRole("button", { name: /, details$/ })).toHaveLength(2);
+});
+
+it("keeps the type heading plain and actions in visual DOM order", () => {
+  const { container } = render(<ResultsPage snapshot={snapshot()} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const heading = screen.getByRole("heading", { name: "Papule", level: 2 });
+  expect(heading).toHaveTextContent(/^Papule$/);
+  expect(heading.querySelector(".ui-badge")).toBeNull();
+  expect(container.querySelector(".result-actions")?.firstElementChild).toHaveTextContent("See treatments");
+  expect(resultsCss).not.toMatch(/\border\s*:/);
+});
+
+it("places the selected badge outside the face with a leader to its marker", () => {
+  const data = snapshot();
+  data.header.face = { bbox: [300, 100, 600, 500], zones: [] };
+  const { container } = render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const badge = container.querySelector<HTMLElement>(".selected-area-badge")!;
+  expect(badge).toHaveClass("ui-floating-badge--left");
+  expect(container.querySelector<HTMLElement>(".blemish-map")?.style.getPropertyValue("--badge-space")).toBe(`${288 / 1280 * 100}%`);
+  expect(parseFloat(badge.style.left) / 100 * data.width).toBeLessThan(300);
+  const leader = container.querySelector(".ui-floating-badge__leader line")!;
+  expect(leader).toHaveAttribute("x2", `${130 / 1280 * 100}%`);
+  fireEvent.click(screen.getByRole("button", { name: "Comedone 1, left cheek, details" }));
+  expect(badge).toHaveClass("ui-floating-badge--right");
+  expect(parseFloat(badge.style.left) / 100 * data.width).toBeGreaterThan(900);
 });
