@@ -60,7 +60,7 @@ export function useBadgeMeasurements(ref: RefObject<HTMLDivElement>, frame: { wi
 }
 
 /** Coordinates describe badge centres vertically and their inner edges horizontally. */
-export function layoutBadges(anchors: { id: string | number; x: number; y: number; width?: number }[], face: [number, number, number, number], frame: { width: number; height: number }, opts: { gap?: number; badgeHeight?: number; badgeWidth?: number; margin?: number } = {}): BadgePlacement[] {
+export function layoutBadges(anchors: { id: string | number; x: number; y: number; width?: number }[], face: [number, number, number, number], frame: { width: number; height: number }, opts: { gap?: number; badgeHeight?: number; badgeWidth?: number; margin?: number; obstacles?: [number, number, number, number][] } = {}): BadgePlacement[] {
   if (![frame.width, frame.height, ...face].every(Number.isFinite) || frame.width <= 0 || frame.height <= 0 || face[2] <= 0 || face[3] <= 0) return [];
   const gap = opts.gap !== undefined && Number.isFinite(opts.gap) ? Math.max(0, opts.gap) : 12;
   const height = opts.badgeHeight !== undefined && Number.isFinite(opts.badgeHeight) ? Math.max(1, opts.badgeHeight) : 44;
@@ -88,6 +88,47 @@ export function layoutBadges(anchors: { id: string | number; x: number; y: numbe
     items.forEach((item, index) => { if (index > 0) item.y = Math.max(item.y, items[index - 1].y + spacing); });
     if (items.length) items[items.length - 1].y = Math.min(items[items.length - 1].y, frame.height - my - half);
     for (let i = items.length - 2; i >= 0; i--) items[i].y = Math.min(items[i].y, items[i + 1].y - spacing);
+  });
+  const obstacles = (opts.obstacles ?? []).filter(rect => rect.every(Number.isFinite) && rect[2] > 0 && rect[3] > 0);
+  // Resolve after column spacing so it cannot move a safe badge back over a marker.
+  if (obstacles.length) placements.forEach(placement => {
+    const anchor = anchors.find(item => item.id === placement.id)!;
+    const width = Math.min(anchor.width !== undefined && Number.isFinite(anchor.width) && anchor.width > 0 ? anchor.width : defaultWidth, frame.width - 2 * mx);
+    const overlap = (candidate: BadgePlacement) => {
+      const left = candidate.side === 'left' ? candidate.x - width : candidate.x;
+      const padding = 4;
+      return obstacles.reduce((area, [x, y, w, h]) => area +
+        Math.max(0, Math.min(left + width, x + w + padding) - Math.max(left, x - padding)) *
+        Math.max(0, Math.min(candidate.y + half, y + h + padding) - Math.max(candidate.y - half, y - padding)), 0);
+    };
+    let best = { ...placement };
+    let leastOverlap = overlap(best);
+    if (leastOverlap === 0) return;
+    const other = placement.side === 'left' ? 'right' : 'left';
+    const candidateAt = (side: 'left' | 'right', y: number): BadgePlacement => ({ ...placement, side, y,
+      x: side === 'left' ? clamp(face[0] - gap, mx + width, frame.width - mx) : clamp(face[0] + face[2] + gap, mx, frame.width - mx - width),
+    });
+    const candidates: BadgePlacement[] = [];
+    // At a frame edge, clamping can push the badge onto its anchor. Move it
+    // inward first to preserve the existing column and its full measured width.
+    if (placement.y !== placement.anchorY) {
+      for (const direction of [-1, 1]) {
+        candidates.push(candidateAt(placement.side, clamp(placement.anchorY + direction * height, my + half, frame.height - my - half)));
+      }
+    }
+    candidates.push(candidateAt(other, placement.y));
+    for (let step = 1; step <= Math.ceil(frame.height / height); step++) {
+      for (const direction of [-1, 1]) {
+        const y = clamp(placement.anchorY + direction * step * height, my + half, frame.height - my - half);
+        candidates.push(candidateAt(placement.side, y), candidateAt(other, y));
+      }
+    }
+    for (const candidate of candidates) {
+      const area = overlap(candidate);
+      if (area < leastOverlap) { best = candidate; leastOverlap = area; }
+      if (area === 0) break;
+    }
+    Object.assign(placement, best);
   });
   return placements;
 }

@@ -29,7 +29,12 @@ export function BlemishMap({ snapshot, selected, onSelect, detailId, tracks = sn
   const badgeSizes = useBadgeMeasurements(mapRef, snapshot, track ? [{ id: track.id, text: badgeText }] : []);
   const placement = track && face ? layoutBadges([{ id: track.id, x: track.bbox[0] + track.bbox[2] / 2, y: track.bbox[1] + track.bbox[3] / 2,
     width: badgeSizes.widths[0] || (60 + badgeText.length * 8) / badgeSizes.scale,
-  }], face.bbox, snapshot, { badgeHeight: badgeSizes.height, margin: 8 / badgeSizes.scale })[0] : undefined;
+  }], face.bbox, snapshot, { badgeHeight: badgeSizes.height, margin: 8 / badgeSizes.scale,
+    obstacles: tracks.map(item => {
+      const size = 44 / badgeSizes.scale;
+      return [item.bbox[0] + item.bbox[2] / 2 - size / 2, item.bbox[1] + item.bbox[3] / 2 - size / 2, size, size];
+    }),
+  })[0] : undefined;
   return <div ref={mapRef} className="blemish-map" style={{ aspectRatio: `${snapshot.width}/${snapshot.height}`,
     "--badge-space": placement ? `${(placement.side === "left" ? placement.x : snapshot.width - placement.x) / snapshot.width * 100}%` : undefined } as CSSProperties}>
     <canvas ref={canvas} width={snapshot.width} height={snapshot.height} role="img" aria-label={`Captured photo with ${tracks.length} marked areas`} />
