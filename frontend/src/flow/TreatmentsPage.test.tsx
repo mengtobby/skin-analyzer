@@ -4,6 +4,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { frameFixture, reportFixture } from "../protocol/fixtures";
 import type { AnalysisSnapshot } from "./snapshot";
 import { TreatmentsPage } from "./TreatmentsPage";
+import { readFileSync } from "node:fs";
+import { URL as NodeURL } from "node:url";
 
 afterEach(cleanup);
 function snapshot(): AnalysisSnapshot {
@@ -69,4 +71,20 @@ it("keeps the ingredient match accessible alongside its donut gauge", () => {
   const { container } = render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
   expect(screen.getByRole("progressbar", { name: data.report.ingredients[0].name + " recommendation match" })).toHaveAttribute("value", "80");
   expect(container.querySelector(".ingredient-score .ui-score-ring")).toHaveAttribute("aria-hidden", "true");
+});
+
+it("shows a single percentage inside the ring and keeps native progress at one pixel", () => {
+  const data = snapshot();
+  const { container } = render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
+  const progress = screen.getByRole("progressbar", { name: data.report.ingredients[0].name + " recommendation match" });
+  expect(progress).toHaveClass("sr-only");
+  expect(container.querySelector(".ingredient-ring > span")).toHaveTextContent("80%");
+  expect(container.querySelector(".ingredient-score")?.children).toHaveLength(2);
+  const css = readFileSync(new NodeURL("./results.css", import.meta.url), "utf-8");
+  expect(css).not.toMatch(/\.analysis-results progress\s*\{/);
+  expect(css).toMatch(/progress:not\(\.sr-only\)\s*\{/);
+  expect(css).toMatch(/progress\.sr-only\s*\{\s*width: 1px; height: 1px;/);
+  expect(css).toMatch(/\.ingredient-ring \.ui-score-ring text\s*\{\s*display: none;/);
+  expect(css).toMatch(/\.ingredient-card \.ui-card__header h3\s*\{\s*margin-top: 0;/);
+  expect(css).toMatch(/\.ingredient-card \.ingredient-score\s*\{\s*margin-top: auto;/);
 });

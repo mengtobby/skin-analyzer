@@ -19,13 +19,13 @@ function IngredientCard({ ingredient, shared }: { ingredient: Ingredient; shared
   const score = Number.isFinite(ingredient.score) ? Math.round(Math.max(0, Math.min(1, ingredient.score)) * 100) : 0;
   const reasons = splitRationale(ingredient.rationale);
   const cautions = ingredient.cautions.filter(caution => !shared.includes(caution));
-  return <Card title={ingredient.name} headingLevel={3}>
+  return <Card className="ingredient-card" title={ingredient.name} headingLevel={3}>
     {reasons.length > 1
       ? <ul className="ingredient-reasons">{reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul>
       : <p>{reasons[0] ?? ingredient.rationale}</p>}
-    <div className="ingredient-score"><ScoreRing value={score} label="Recommendation match" size={64} decorative /><span>Recommendation match</span><span>{score}%</span></div>
     <progress className="sr-only" max={100} value={score} aria-label={`${ingredient.name} recommendation match`} />
     {cautions.map((caution, i) => <p key={i} className="treatment-caution">{caution}</p>)}
+    <div className="ingredient-score"><span className="ingredient-ring" aria-hidden="true"><ScoreRing value={score} label="Recommendation match" size={64} decorative /><span>{score}%</span></span><span>Recommendation match</span></div>
   </Card>;
 }
 
