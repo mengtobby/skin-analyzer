@@ -3,7 +3,7 @@ import type { FrameHeader } from "../protocol/types";
 import { drawOverlay } from "../overlay/draw";
 import type { Connection } from "../stream/useSkinStream";
 import { drawFaceMesh, meshFromFace } from "../overlay/mesh";
-import { layoutBadges } from "../lib/badgeLayout";
+import { layoutBadges, useBadgeMeasurements } from "../lib/badgeLayout";
 import { LABEL_INFO } from "../lib/blemishInfo";
 import type { Label } from "../protocol/types";
 import { Button, ScanFaceIcon } from "../ui";
@@ -50,6 +50,8 @@ function drawFrame(canvas: HTMLCanvasElement | null, bitmap: ImageBitmap | null,
 }
 export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, scanProgress }: LiveViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const badgesRef = useRef<HTMLDivElement>(null);
+  const badgeSizes = useBadgeMeasurements(badgesRef, header ?? { width: 0, height: 0 });
   const [overlay, setOverlay] = useState(false);
   useEffect(() => {
     let frame = 0;
@@ -71,14 +73,15 @@ export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, 
       else groups[track.label] = { label: track.label, count: 1, x: x + width / 2, y: y + height / 2 };
       return groups;
     }, {})).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)).slice(0, 3) : [];
-  const placements = validFrame && header.face ? layoutBadges(labels.map(item => ({
+  const placements = validFrame && header.face ? layoutBadges(labels.map((item, index) => ({
     id: item.label, x: item.x / item.count, y: item.y / item.count,
-  })), header.face.bbox, header) : [];
+    width: badgeSizes.widths[index] || (60 + `${LABEL_INFO[item.label].plural} ${item.count}`.length * 8) / badgeSizes.scale,
+  })), header.face.bbox, header, { badgeHeight: badgeSizes.height, margin: 8 / badgeSizes.scale }) : [];
   return <section className="panel live-panel" aria-labelledby="live-title">
     <div className="panel-heading"><h2 id="live-title">Live analysis</h2></div>
     <div className="canvas-wrap" data-frame-id={header?.frame_id}>
       <canvas ref={canvasRef} role="img" aria-label="Live camera with skin detection overlays" />
-      <div className="live-badges" style={{ width: `${Math.min(100, frameAspect / (16 / 9) * 100)}%`, height: `${Math.min(100, (16 / 9) / frameAspect * 100)}%` }}>{placements.map(placement => {
+      <div ref={badgesRef} className="live-badges" style={{ width: `${Math.min(100, frameAspect / (16 / 9) * 100)}%`, height: `${Math.min(100, (16 / 9) / frameAspect * 100)}%` }}>{placements.map(placement => {
         const item = labels.find(label => label.label === placement.id)!;
         return <FloatingBadge key={item.label} x={placement.x / header!.width * 100} y={placement.y / header!.height * 100}
           leader={{ x: placement.anchorX / header!.width * 100, y: placement.anchorY / header!.height * 100 }} side={placement.side}
