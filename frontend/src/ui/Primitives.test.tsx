@@ -2,8 +2,17 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Badge, Card, HomeIcon, Chip, ChipGroup, IconButton, ScoreRing, FloatingBadge } from "./index";
+import { FloatingBadge as LinkedFloatingBadge } from './FloatingBadge';
+import { readFileSync } from 'node:fs';
+import { URL as NodeURL } from 'node:url';
 
 afterEach(cleanup);
+it('keeps stepper progress thin with softer tracks and peach current markers', () => {
+  const css = readFileSync(new NodeURL('./Stepper.css', import.meta.url), 'utf8');
+  expect(css).toMatch(/\.ui-stepper__segment \{[^}]*height: 4px;[^}]*color-mix\(in srgb, var\(--border\) 55%, transparent\)/);
+  expect(css).toMatch(/\.ui-stepper__segment > span \{[^}]*background: var\(--ink\); opacity: \.85;/);
+  expect(css).toMatch(/\.ui-stepper__marker > span \{[^}]*background: var\(--peach\)/);
+});
 it("renders a section with title, action and forwarded attributes", () => {
   render(<Card title={<span>Overview</span>} action={<button>Details</button>} className="custom" aria-label="Summary"><p>Analysis ready</p></Card>);
   const card = screen.getByRole("region", { name: "Summary" });
@@ -66,4 +75,26 @@ it('renders dark badges, labelled icon buttons and positioned floating badges', 
 it('renders a solid card variant', () => {
   render(<Card variant="solid">Content</Card>);
   expect(screen.getByText('Content')).toHaveClass('ui-card--solid');
+});
+
+it('draws a decorative leader and dot in the same container coordinates', () => {
+  const { container, rerender } = render(<LinkedFloatingBadge x={20} y={40} side="left" leader={{ x: 45, y: 60 }}>26</LinkedFloatingBadge>);
+  expect(screen.getByText('26')).toHaveClass('ui-floating-badge--left');
+  expect(screen.getByText('26')).toHaveStyle({ left: '20%', top: '40%' });
+  const svg = container.querySelector('svg');
+  expect(svg).toHaveAttribute('aria-hidden', 'true');
+  expect(svg).toHaveAttribute('focusable', 'false');
+  expect(svg?.querySelector('line')).toHaveAttribute('x1', '20%');
+  expect(svg?.querySelector('line')).toHaveAttribute('y1', '40%');
+  expect(svg?.querySelector('line')).toHaveAttribute('x2', '45%');
+  expect(svg?.querySelector('line')).toHaveAttribute('y2', '60%');
+  expect(svg?.querySelector('circle')).toHaveAttribute('r', '3');
+  expect(svg?.querySelector('circle')).toHaveAttribute('cx', '45%');
+  expect(svg?.querySelector('circle')).toHaveAttribute('cy', '60%');
+  rerender(<LinkedFloatingBadge x={130} y={NaN} side="right">26</LinkedFloatingBadge>);
+  expect(container.querySelector('svg')).toBeNull();
+  expect(screen.getByText('26')).toHaveClass('ui-floating-badge--right');
+  expect(screen.getByText('26')).toHaveStyle({ left: '100%', top: '0%' });
+  rerender(<LinkedFloatingBadge x={20} y={40} leader={{ x: Infinity, y: 60 }}>26</LinkedFloatingBadge>);
+  expect(container.querySelector('svg')).toBeNull();
 });

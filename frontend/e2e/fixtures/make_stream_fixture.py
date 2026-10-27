@@ -57,9 +57,23 @@ def main() -> None:
         "width": 1280, "height": 720, "analyzed": True,
         "face": {
             "bbox": [*minimum.tolist(), *(maximum - minimum).tolist()],
-            "zones": [{"zone": "forehead", "polygon": [
-                [535, 150], [745, 150], [760, 245], [520, 245],
-            ]}],
+            "zones": [
+                {"zone": "forehead", "polygon": [
+                    [535, 150], [745, 150], [760, 245], [520, 245],
+                ]},
+                {"zone": "nose", "polygon": [
+                    [620, 285], [660, 285], [679, 398], [662, 420], [618, 420], [601, 398],
+                ]},
+                {"zone": "left_cheek", "polygon": [
+                    [485, 333], [591, 333], [602, 422], [615, 490], [544, 522], [487, 473], [471, 400],
+                ]},
+                {"zone": "right_cheek", "polygon": [
+                    [689, 333], [795, 333], [809, 400], [793, 473], [736, 522], [665, 490], [678, 422],
+                ]},
+                {"zone": "chin", "polygon": [
+                    [568, 539], [712, 539], [721, 563], [687, 598], [640, 609], [593, 598], [559, 563],
+                ]},
+            ],
         },
         "tracks": [{
             "id": t.track_id, "label": t.label.value, "confidence": t.confidence,
