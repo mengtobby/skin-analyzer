@@ -25,6 +25,17 @@ export function useBadgeMeasurements(ref: RefObject<HTMLDivElement>, frame: { wi
     return () => observer?.disconnect();
   }, [ref]);
   useLayoutEffect(() => { cache.current.clear(); }, [container.width, container.height]);
+  // Widths measured in the fallback font are wrong once the web font swaps in.
+  const [fontEpoch, setFontEpoch] = useState(0);
+  useLayoutEffect(() => {
+    const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+    if (!fonts) return;
+    let active = true;
+    const remeasure = () => { if (!active) return; cache.current.clear(); setFontEpoch(epoch => epoch + 1); };
+    fonts.ready?.then(remeasure, () => undefined);
+    fonts.addEventListener?.('loadingdone', remeasure);
+    return () => { active = false; fonts.removeEventListener?.('loadingdone', remeasure); };
+  }, []);
   useLayoutEffect(() => {
     const area = ref.current;
     const scale = Math.min(container.width / frame.width, container.height / frame.height);
@@ -44,7 +55,7 @@ export function useBadgeMeasurements(ref: RefObject<HTMLDivElement>, frame: { wi
     const widths = measured.map(size => size.width / scale);
     const height = Math.max(44, ...measured.map(size => size.height)) / scale;
     setSizes(previous => previous.scale === scale && previous.height === height && previous.widths.length === widths.length && widths.every((width, index) => width === previous.widths[index]) ? previous : { widths, height, scale });
-  }, [ref, key, frame.width, frame.height, container.width, container.height]);
+  }, [ref, key, frame.width, frame.height, container.width, container.height, fontEpoch]);
   return sizes;
 }
 

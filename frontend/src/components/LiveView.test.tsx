@@ -128,7 +128,7 @@ it('places label badges beside the face and leads to the centroid of their track
   expect(screen.getByText(`${LABEL_INFO.papule.plural} 2`)).toBeVisible();
 });
 
-it.each([[0, 720], [1280, 0], [NaN, 720], [1280, Infinity]])('omits badges for invalid frame dimensions %s Ã— %s', (width, height) => {
+it.each([[0, 720], [1280, 0], [NaN, 720], [1280, Infinity]])('omits badges for invalid frame dimensions %s × %s', (width, height) => {
   const ctx = { setTransform: vi.fn(), clearRect: vi.fn(), drawImage: vi.fn() };
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
   let callback: FrameRequestCallback = () => undefined;
@@ -199,6 +199,33 @@ it('feeds measured badge dimensions to layout in image pixels and updates on res
   expect(measure).toHaveBeenCalledTimes(calls + 1);
   unmount();
   expect(disconnect).toHaveBeenCalled();
+});
+
+it('re-measures cached badge widths once the web font finishes loading', () => {
+  let badgeWidth = 150;
+  const listeners: Record<string, () => void> = {};
+  const removed = vi.fn();
+  Object.defineProperty(document, 'fonts', {
+    configurable: true,
+    value: {
+      ready: new Promise(() => undefined),
+      addEventListener: (type: string, listener: () => void) => { listeners[type] = listener; },
+      removeEventListener: removed,
+    },
+  });
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const width = this.classList.contains('live-badges') ? 640 : this.classList.contains('ui-floating-badge') ? badgeWidth : 0;
+    return { width, height: this.classList.contains('live-badges') ? 360 : 50, x: 0, y: 0, top: 0, left: 0, right: width, bottom: 0, toJSON: () => ({}) };
+  });
+  const layout = vi.spyOn(badgeLayout, 'layoutBadges');
+  const { unmount } = render(<LiveView bitmapRef={{ current: null }} headerRef={{ current: frameFixture }} header={frameFixture} connection="connected" sendReset={vi.fn()} />);
+  expect(layout).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ width: 300 })]), expect.anything(), expect.anything(), expect.anything());
+  badgeWidth = 210;
+  act(() => listeners.loadingdone());
+  expect(layout).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ width: 420 })]), expect.anything(), expect.anything(), expect.anything());
+  unmount();
+  expect(removed).toHaveBeenCalledWith('loadingdone', expect.any(Function));
+  delete (document as { fonts?: unknown }).fonts;
 });
 
 it.each([0, 1440])('keeps the measured selected-area badge inside the results frame at y=%s', y => {
