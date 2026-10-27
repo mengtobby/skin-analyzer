@@ -7,7 +7,7 @@ export function BlemishDetail({ id, track, report }: { id: string; track: Track 
   const info = LABEL_INFO[track.label];
   const insight = insightFor(track.label, report);
   return <Card id={id} className="blemish-detail" aria-label="Selected area details">
-    <p className="result-muted">Type</p>
+    <p className="sr-only">Type</p>
     <div className="result-inline"><h2>{info.name}</h2><Badge>{ZONE_NAMES[track.zone]}</Badge></div>
     <h3>What it is</h3><p>{info.description}</p>
     <dl className="blemish-measurements"><div><dt>Approx. size</dt><dd>{track.size_mm.toFixed(1)} mm</dd></div>

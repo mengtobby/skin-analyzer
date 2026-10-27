@@ -76,11 +76,11 @@
 .area-chevron, .recommendation-icon, .recommendation-arrow, .routine-icon { display: inline-grid; place-items: center; border-radius: 50%; flex: none; }
 .blemish-list button .area-chevron { width: 32px; height: 32px; color: white; background: var(--ink, #141815); }
 .area-chevron svg { width: 18px; height: 18px; }
-.blemish-measurements { border: 0; padding: 0; gap: 12px; }
-.blemish-measurements > div { flex: 1; padding: 16px; background: var(--surface-soft, #e8edea); border-radius: 18px; }
+.blemish-measurements { padding: 16px 0; gap: 24px; border-block: 1px solid var(--border); }
+.blemish-measurements > div { flex: 1; }
 .skin-scores > section { text-align: center; padding: 24px 16px; }
 .skin-scores .ui-score-ring { margin-bottom: 16px; max-width: 100%; height: auto; }
-.skin-score-value { font-size: 1.5rem; margin: 8px 0; }
+.skin-score-value { font-size: 2rem; margin: 8px 0; }
 .result-callout { background: #f4b08c38; border-color: #c8632f; border-radius: 20px; }
 .result-actions { border: 0; align-items: center; }
 .recommendation-row { display: flex; align-items: center; gap: 16px; width: 100%; padding: 16px 20px; border-radius: 24px; font: inherit; font-weight: 600; color: var(--ink, #141815); cursor: pointer; text-align: left; }
@@ -103,10 +103,10 @@
   .blemish-list button { padding: 12px; }
 }
 .ingredient-card { display: flex; flex-direction: column; min-width: 0; }
-.ingredient-card .ui-card__header h3 { margin-top: 0; min-width: 0; overflow-wrap: anywhere; }
-.ingredient-card .ingredient-score { margin-top: auto; padding-top: 20px; margin-bottom: 0; }
-.ingredient-ring { position: relative; display: inline-grid; place-items: center; flex: none; width: 64px; height: 64px; }
-.ingredient-ring .ui-score-ring text { display: none; }
-.ingredient-ring > span { position: absolute; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ingredient-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.analysis-results .ingredient-header h3 { margin: 0; font-size: 1.25rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ingredient-header .ingredient-score { flex: none; margin: 0; }
+.blemish-detail ul, .ingredient-reasons, .result-callout ul { padding-inline-start: 24px; }
+.analysis-results li::marker { color: var(--apricot); }
 .analysis-results progress.sr-only { width: 1px; height: 1px; }
 .ingredient-score > span:last-child { min-width: 0; overflow-wrap: anywhere; }
