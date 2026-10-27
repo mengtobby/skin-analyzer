@@ -29,7 +29,7 @@ export function CameraPage({ stream, onCapture, onProgress }: {
     wasScanning.current = scan.scanning;
   }, [scan.scanning]);
   return <div className="camera-page" ref={pageRef}><header><h1>A moment for your skin</h1><p>Face the camera and settle into even light.</p></header>
-    <div className="camera-layout"><LiveView {...stream} headerRef={stream.displayHeaderRef} />
+    <div className="camera-layout"><LiveView {...stream} headerRef={stream.displayHeaderRef} scanProgress={scan.scanning ? scan.progress : undefined} />
       <Card title="Let's get a clear view">
         <Badge tone={stream.connection === 'connected' ? 'success' : 'neutral'}>{stream.connection === 'connected' ? 'Camera connected' : 'Reconnecting'}{stream.header ? ` - ${Math.round(stream.header.perf.fps)} fps` : ''}</Badge>
         <div role="status" aria-live="polite" aria-atomic="false">
@@ -41,7 +41,7 @@ export function CameraPage({ stream, onCapture, onProgress }: {
         {ready && <p>You're ready. Hold still for a short scan.</p>}
         {scan.scanning ? <div>
           <progress aria-label="Scan progress" max={1} value={scan.progress} /><Button data-scan-action variant="secondary" onClick={scan.cancel}>Cancel scan</Button></div>
-          : <Button data-scan-action size="lg" disabled={!ready && !hasScanned.current} aria-disabled={!ready || undefined} onClick={() => { if (ready) { hasScanned.current = true; scan.start(); } }}>Analyze my skin</Button>}
+          : <Button data-scan-action variant="cta" size="lg" disabled={!ready && !hasScanned.current} aria-disabled={!ready || undefined} onClick={() => { if (ready) { hasScanned.current = true; scan.start(); } }}>Analyze my skin</Button>}
         <p role="alert" aria-atomic="true">{announcedError}</p>
         <p><a href="#settings">Change camera in Settings</a></p>
       </Card></div></div>;
