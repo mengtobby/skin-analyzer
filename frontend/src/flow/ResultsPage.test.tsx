@@ -71,6 +71,11 @@ it("handles unavailable scores and image rendering failure", () => {
   const data = snapshot(); data.header.metrics = null;
   render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
   expect(screen.getAllByText("Score unavailable")).toHaveLength(4);
+  const scores = screen.getByRole("region", { name: "Overall skin scores" });
+  for (const heading of within(scores).getAllByRole("heading")) {
+    const tile = heading.closest("section")!;
+    expect(tile.querySelector(".skin-score-value")?.textContent).toBe("\u2014 / 100");
+  }
   expect(screen.getAllByRole("status")[1]).toHaveTextContent("could not be displayed");
 });
 
