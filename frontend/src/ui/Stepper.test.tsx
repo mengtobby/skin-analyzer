@@ -2,9 +2,23 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Stepper } from "./Stepper";
+import { readFileSync } from 'node:fs';
+import { URL as NodeURL } from 'node:url';
 
 const steps = ["Start", "Camera", "Results", "Treatments"].map(label => ({ id: label.toLowerCase(), label }));
 afterEach(cleanup);
+it("gives the current marker a peach center and a substantial ink border", () => {
+  render(<Stepper steps={steps} current={1} />);
+  const markers = screen.getAllByRole('listitem').map(item => item.querySelector('.ui-stepper__marker'));
+  expect(markers[1]).toHaveAttribute('aria-hidden', 'true');
+  expect(markers.map(marker => marker?.childElementCount)).toEqual([0, 1, 0, 0]);
+  const stepperCss = readFileSync(new NodeURL('./Stepper.css', import.meta.url), 'utf8');
+  const markerRule = stepperCss.match(/\.ui-stepper__marker > span \{([^}]+)\}/)?.[1];
+  expect(markerRule).toContain('width: 8px');
+  expect(markerRule).toContain('height: 8px');
+  expect(markerRule).toContain('border: 2px solid var(--ink)');
+  expect(markerRule).toContain('background: var(--peach)');
+});
 it("marks the current step and exposes the step count", () => {
   render(<Stepper steps={steps} current={1} />);
   const nav = screen.getByRole("navigation", { name: "Analysis progress" });
