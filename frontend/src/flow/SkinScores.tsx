@@ -12,7 +12,7 @@ export function SkinScores({ metrics }: { metrics: SkinMetrics | null }) {
       const raw = metrics?.overall[key];
       const score = raw !== undefined && Number.isFinite(raw) ? Math.round(Math.max(0, Math.min(100, raw))) : null;
       return <Card key={key}><ScoreRing value={score} label={name} decorative showValue={false} /><h3>{name}</h3>
-        <p className="skin-score-value">{score ?? "â€”"}<span> / 100</span></p>
+        <p className="skin-score-value">{score ?? "\u2014"}<span> / 100</span></p>
         <p className="result-muted">{score === null ? "Score unavailable" : meaning}</p></Card>;
     })}
   </section>;
