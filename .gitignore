@@ -14,3 +14,6 @@ backend/models/*.engine
 frontend/coverage/
 frontend/test-results/
 frontend/playwright-report/
+
+# Impeccable design-review captures (local only)
+.impeccable/review/
