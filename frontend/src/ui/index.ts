@@ -9,3 +9,5 @@ export type { StepperProps } from "./Stepper";
 export { AppShell } from "./AppShell";
 export type { AppShellProps } from "./AppShell";
 export * from "./icons";
+export { IconButton, Chip, ChipGroup, ScoreRing, FloatingBadge } from "./Primitives";
+export type { IconButtonProps, ChipProps, ScoreRingProps, FloatingBadgeProps } from "./Primitives";
