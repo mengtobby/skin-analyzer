@@ -33,14 +33,33 @@ export function meshFromZones(zones: { zone: string; polygon: Point[] }[]): Face
   return { points, edges };
 }
 
-export function drawFaceMesh(ctx: CanvasRenderingContext2D, mesh: ReturnType<typeof meshFromZones>, scale: number, opts: { highlightY?: number; alpha?: number } = {}): void {
+export function meshFromFace(face: { bbox: [number, number, number, number]; zones: { zone: string; polygon: Point[] }[] }): FaceMesh {
+  const mesh = meshFromZones(face.zones);
+  const [x, y, width, height] = face.bbox;
+  if (!face.bbox.every(Number.isFinite) || width <= 0 || height <= 0) return mesh;
+  const zoneVertices = mesh.points.map((point, index) => ({ point, index })).filter(({ point }) =>
+    face.zones.some(({ polygon }) => polygon.some(vertex => Math.hypot(vertex[0] - point[0], vertex[1] - point[1]) <= 2)));
+  const offset = mesh.points.length;
+  for (let i = 0; i < 18; i++) {
+    const angle = i * Math.PI * 2 / 18 - Math.PI / 2;
+    const point: Point = [x + width / 2 + Math.cos(angle) * width * .46, y + height / 2 + Math.sin(angle) * height * .46];
+    mesh.points.push(point);
+    mesh.edges.push([offset + i, offset + (i + 1) % 18]);
+    const nearest = zoneVertices.reduce<typeof zoneVertices[number] | undefined>((best, candidate) =>
+      !best || Math.hypot(candidate.point[0] - point[0], candidate.point[1] - point[1]) < Math.hypot(best.point[0] - point[0], best.point[1] - point[1]) ? candidate : best, undefined);
+    if (nearest) mesh.edges.push([offset + i, nearest.index]);
+  }
+  return mesh;
+}
+
+export function drawFaceMesh(ctx: CanvasRenderingContext2D, mesh: FaceMesh, scale: number, opts: { highlightY?: number; alpha?: number } = {}): void {
   if (!Number.isFinite(scale) || scale <= 0) return;
   const alpha = opts.alpha === undefined || !Number.isFinite(opts.alpha) ? 1 : Math.max(0, Math.min(1, opts.alpha));
   ctx.save();
   ctx.globalAlpha *= alpha;
   ctx.lineWidth = 1;
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.setLineDash([2, 4]);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.setLineDash([3, 4]);
   ctx.beginPath();
   mesh.edges.forEach(([a, b]) => {
     const start = mesh.points[a];
@@ -52,9 +71,12 @@ export function drawFaceMesh(ctx: CanvasRenderingContext2D, mesh: ReturnType<typ
   ctx.stroke();
   ctx.setLineDash([]);
   mesh.points.forEach(([x, y]) => {
-    ctx.fillStyle = opts.highlightY !== undefined && y <= opts.highlightY ? '#f4b08c' : 'rgba(255, 255, 255, 0.9)';
+    const highlighted = opts.highlightY !== undefined && y <= opts.highlightY;
+    ctx.shadowColor = highlighted ? 'rgba(244, 176, 140, 0.4)' : 'transparent';
+    ctx.shadowBlur = highlighted ? 8 : 0;
+    ctx.fillStyle = highlighted ? '#f4b08c' : 'rgba(255, 255, 255, 0.9)';
     ctx.beginPath();
-    ctx.arc(x * scale, y * scale, 2.5, 0, Math.PI * 2);
+    ctx.arc(x * scale, y * scale, 3, 0, Math.PI * 2);
     ctx.fill();
   });
   ctx.restore();
