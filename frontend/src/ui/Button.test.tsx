@@ -22,3 +22,11 @@ it("forwards attributes and clicks, and respects disabled", () => {
   expect(button).toBeDisabled();
   expect(onClick).toHaveBeenCalledTimes(1);
 });
+
+it('keeps the CTA accessible name and renders its decorative arrow circle', () => {
+  render(<Button variant="cta">Continue</Button>);
+  const button = screen.getByRole('button', { name: 'Continue' });
+  expect(button).toHaveClass('ui-button--cta');
+  expect(button.querySelector('.ui-button__arrow')).toHaveAttribute('aria-hidden', 'true');
+  expect(button.querySelector('.ui-button__arrow svg')).toBeInTheDocument();
+});

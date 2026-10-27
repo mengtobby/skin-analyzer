@@ -45,3 +45,12 @@ export function MoonIcon(props: IconProps) {
 export function RefreshIcon(props: IconProps) {
   return <Icon {...props}><path d="M20 4v6h-6M4 20v-6h6M4.8 8a8 8 0 0 1 13-2L20 10M4 14l2.2 4a8 8 0 0 0 13-2" /></Icon>;
 }
+export function ArrowRightIcon(props: IconProps) {
+  return <Icon {...props}><path d="M4 12h16m-7-7 7 7-7 7" /></Icon>;
+}
+export function SparkleIcon(props: IconProps) {
+  return <Icon {...props}><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></Icon>;
+}
+export function DropletIcon(props: IconProps) {
+  return <Icon {...props}><path d="M12 3C9 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4-8-7-12Z" /></Icon>;
+}

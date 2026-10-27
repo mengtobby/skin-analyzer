@@ -20,10 +20,12 @@ const contrast = (a: string, b: string): number => {
 };
 
 it.each([
-  ["text", "bg", 4.5], ["muted", "bg", 4.5], ["muted", "surface", 4.5],
+  ["text", "bg", 4.5], ["text", "surface", 4.5], ["muted", "bg", 4.5], ["muted", "surface", 4.5],
   ["accent-text", "bg", 4.5], ["accent-text", "surface", 4.5],
   ["control-border", "surface", 3], ["control-border", "bg", 3],
-  ["accent", "bg", 3], ["progress", "bg", 3],
+  ["accent", "bg", 3], ["accent", "surface", 3], ["progress", "bg", 3], ["progress", "surface", 3],
 ])("--%s on --%s meets %s:1 (WCAG AA)", (fg, bg, minimum) => {
   expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(minimum as number);
 });
+
+it('white on ink meets 4.5:1', () => { expect(contrast('#ffffff', token('ink'))).toBeGreaterThanOrEqual(4.5); });
