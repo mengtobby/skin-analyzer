@@ -12,14 +12,14 @@ export function Chip({ pressed, onPressedChange, onClick, className = '', type =
 export function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
   return <div role="group" aria-label={label} className="ui-chip-group">{children}</div>;
 }
-export type ScoreRingProps = { value: number | null; label: string; size?: number; decorative?: boolean };
-export function ScoreRing({ value, label, size = 112, decorative = false }: ScoreRingProps) {
+export type ScoreRingProps = { value: number | null; label: string; size?: number; decorative?: boolean; showValue?: boolean };
+export function ScoreRing({ value, label, size = 112, decorative = false, showValue = true }: ScoreRingProps) {
   const score = value !== null && Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : null;
   const dimension = Number.isFinite(size) && size > 0 ? size : 112;
   return <svg className="ui-score-ring" width={dimension} height={dimension} viewBox="0 0 100 100" role={decorative ? undefined : 'img'} aria-hidden={decorative || undefined} aria-label={decorative ? undefined : score === null ? `${label} unavailable` : `${label} ${score} out of 100`}>
     <circle className="ui-score-ring__track" cx="50" cy="50" r="42" />
     {score !== null && <circle className="ui-score-ring__arc" cx="50" cy="50" r="42" pathLength="100" strokeDasharray={`${score} 100`} transform="rotate(-90 50 50)" />}
-    <text x="50" y="50" dominantBaseline="central" textAnchor="middle">{score ?? '\u2014'}</text>
+    {showValue && <text x="50" y="50" dominantBaseline="central" textAnchor="middle">{score === null ? '\u2014' : `${score}%`}</text>}
   </svg>;
 }
 export type FloatingBadgeProps = { x: number; y: number; icon?: ReactNode; children: ReactNode; className?: string };

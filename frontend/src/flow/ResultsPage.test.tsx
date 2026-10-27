@@ -158,3 +158,20 @@ it("places the selected badge outside the face with a leader to its marker", () 
   expect(badge).toHaveClass("ui-floating-badge--right");
   expect(parseFloat(badge.style.left) / 100 * data.width).toBeGreaterThan(900);
 });
+
+it("hides Type, flattens measurements, and renders each score value only once", () => {
+  const { container } = render(<ResultsPage snapshot={snapshot()} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const detail = screen.getByRole("region", { name: "Selected area details" });
+  expect(within(detail).getByText("Type")).toHaveClass("sr-only");
+  const measurements = container.querySelector(".blemish-measurements")!;
+  expect(measurements.querySelector(".ui-card")).toBeNull();
+  expect(resultsCss).toMatch(/\.blemish-measurements > div\s*\{\s*flex: 1;\s*\}/);
+  expect(resultsCss).toMatch(/\.analysis-results li::marker\s*\{\s*color: var\(--apricot\)/);
+  const scores = screen.getByRole("region", { name: "Overall skin scores" });
+  for (const heading of within(scores).getAllByRole("heading")) {
+    const tile = heading.closest("section")!;
+    expect(tile.querySelectorAll(".skin-score-value")).toHaveLength(1);
+    expect(tile.textContent?.match(/\/ 100/g)).toHaveLength(1);
+    expect(tile.querySelector("svg text")).toBeNull();
+  }
+});
