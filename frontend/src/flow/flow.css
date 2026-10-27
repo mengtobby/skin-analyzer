@@ -39,7 +39,7 @@
 .camera-layout progress::-webkit-progress-bar { background: var(--border); }
 .camera-layout progress::-webkit-progress-value { background: var(--ink); }
 .camera-layout progress::-moz-progress-bar { background: var(--ink); }
-@supports (backdrop-filter: blur(1px)) { .mesh-face-card, .capture-tips, .live-panel { backdrop-filter: blur(24px) saturate(1.2); } .capture-tips, .live-panel { background: rgb(255 255 255 / 72%); } }
+@supports (backdrop-filter: blur(1px)) { .capture-tips, .live-panel { backdrop-filter: blur(24px) saturate(1.2); } .capture-tips, .live-panel { background: rgb(255 255 255 / 72%); } }
 @media (max-width: 800px) { .start-hero { grid-template-columns: 1fr; gap: 28px; } .mesh-face-card { max-width: 480px; width: 100%; margin: auto; } .capture-tip { padding: 20px; } .capture-tip + .capture-tip { border-left: 0; border-top: 1px solid var(--border); } .live-panel { padding: 12px; } .live-badges .ui-floating-badge { font-size: 12px; padding: 7px 10px; } }
 .live-badges { inset: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); }
 .camera-page .ui-button--cta[aria-disabled="true"]:hover { background: var(--ink); border-color: var(--ink); }
