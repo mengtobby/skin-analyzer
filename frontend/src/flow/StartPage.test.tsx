@@ -3,6 +3,16 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { StartPage } from './StartPage';
 afterEach(cleanup);
+it('draws the mesh directly on a single card without an inner panel', () => {
+  const { container } = render(<StartPage onStart={vi.fn()} />);
+  const cards = container.querySelectorAll('.mesh-face-card');
+  expect(cards).toHaveLength(1);
+  const card = cards[0];
+  expect(card.parentElement).toHaveClass('start-hero');
+  expect(card.querySelector(':scope > svg')).toBeInTheDocument();
+  expect(card.querySelector('rect, [class*="panel"], [class*="card"]')).not.toBeInTheDocument();
+  expect(Array.from(card.children).every(child => child.tagName.toLowerCase() === 'svg' || child.classList.contains('ui-floating-badge'))).toBe(true);
+});
 it('draws a decorative face with an oval and distinct facial landmarks', () => {
   render(<StartPage onStart={vi.fn()} />);
   const illustration = document.querySelector('.mesh-face-card');
