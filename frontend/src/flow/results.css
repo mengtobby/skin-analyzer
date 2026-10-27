@@ -103,8 +103,8 @@
   .blemish-list button { padding: 12px; }
 }
 .ingredient-card { display: flex; flex-direction: column; min-width: 0; }
-.ingredient-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-.analysis-results .ingredient-header h3 { margin: 0; font-size: 1.25rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ingredient-header { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(3.5rem, auto) auto; align-items: start; gap: 16px; margin-bottom: 20px; }
+.analysis-results .ingredient-header h3 { margin: 0; font-size: 1.25rem; font-weight: 600; min-width: 0; line-height: 1.4; hyphens: manual; overflow-wrap: normal; }
 .ingredient-header .ingredient-score { flex: none; margin: 0; }
 .blemish-detail ul, .ingredient-reasons, .result-callout ul { padding-inline-start: 24px; }
 .analysis-results li::marker { color: var(--apricot); }
