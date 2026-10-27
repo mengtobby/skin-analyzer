@@ -58,13 +58,19 @@ it('allows a chip click handler to prevent selection', () => {
 });
 it('names score rings and renders an empty track for unavailable data', () => {
   const { rerender } = render(<ScoreRing label="Redness" value={26} />);
-  expect(screen.getByRole('img', { name: 'Redness 26 out of 100' })).toHaveTextContent('26');
+  expect(screen.getByRole('img', { name: 'Redness 26 out of 100' })).toHaveTextContent(/^26$/);
   rerender(<ScoreRing label="Redness" value={null} />);
   expect(screen.getByRole('img', { name: 'Redness unavailable' })).toHaveTextContent('\u2014');
   expect(document.querySelector('.ui-score-ring__arc')).toBeNull();
   rerender(<ScoreRing label="Redness" value={150} decorative />);
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
   expect(document.querySelector('.ui-score-ring')).toHaveTextContent('100');
+});
+it('appends an explicit suffix only to available score values', () => {
+  const { rerender } = render(<ScoreRing label="Recommendation match" value={80} suffix="%" />);
+  expect(screen.getByRole('img', { name: 'Recommendation match 80 out of 100' })).toHaveTextContent(/^80%$/);
+  rerender(<ScoreRing label="Recommendation match" value={null} suffix="%" />);
+  expect(screen.getByRole('img', { name: 'Recommendation match unavailable' })).toHaveTextContent(/^\u2014$/);
 });
 it('renders dark badges, labelled icon buttons and positioned floating badges', () => {
   render(<><Badge tone="dark" icon={<HomeIcon />}>Ready</Badge><IconButton label="Continue" icon={<HomeIcon />} /><FloatingBadge x={25} y={60} icon={<HomeIcon />}>26</FloatingBadge></>);

@@ -13,7 +13,6 @@ export function BlemishMap({ snapshot, selected, onSelect, detailId, tracks = sn
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
-  const badgeSizes = useBadgeMeasurements(mapRef, snapshot);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     try {
@@ -27,6 +26,7 @@ export function BlemishMap({ snapshot, selected, onSelect, detailId, tracks = sn
   const face = snapshot.header.face;
   const mesh = face ? meshFromFace(face) : { points: [], edges: [] };
   const badgeText = track ? `${areaName(track, snapshot.header.tracks.slice(0, snapshot.header.tracks.indexOf(track)).filter(item => item.label === track.label).length)} ${Math.round(track.confidence * 100)}%` : '';
+  const badgeSizes = useBadgeMeasurements(mapRef, snapshot, track ? [{ id: track.id, text: badgeText }] : []);
   const placement = track && face ? layoutBadges([{ id: track.id, x: track.bbox[0] + track.bbox[2] / 2, y: track.bbox[1] + track.bbox[3] / 2,
     width: badgeSizes.widths[0] || (60 + badgeText.length * 8) / badgeSizes.scale,
   }], face.bbox, snapshot, { badgeHeight: badgeSizes.height, margin: 8 / badgeSizes.scale })[0] : undefined;

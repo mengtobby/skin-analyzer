@@ -78,7 +78,7 @@ it("shows a single percentage inside the ring and keeps native progress at one p
   const { container } = render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
   const progress = screen.getByRole("progressbar", { name: data.report.ingredients[0].name + " recommendation match" });
   expect(progress).toHaveClass("sr-only");
-  expect(container.querySelector(".ingredient-header .ui-score-ring text")).toHaveTextContent("80%");
+  expect(container.querySelector(".ingredient-header .ui-score-ring text")).toHaveTextContent(/^80%$/);
   expect(container.querySelector(".ingredient-score")?.children).toHaveLength(2);
   const css = readFileSync(new NodeURL("./results.css", import.meta.url), "utf-8");
   expect(css).not.toMatch(/\.analysis-results progress\s*\{/);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
 import type { FrameHeader } from "../protocol/types";
 import { drawOverlay } from "../overlay/draw";
 import type { Connection } from "../stream/useSkinStream";
@@ -51,7 +51,6 @@ function drawFrame(canvas: HTMLCanvasElement | null, bitmap: ImageBitmap | null,
 export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, scanProgress }: LiveViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const badgesRef = useRef<HTMLDivElement>(null);
-  const badgeSizes = useBadgeMeasurements(badgesRef, header ?? { width: 0, height: 0 });
   const [overlay, setOverlay] = useState(false);
   useEffect(() => {
     let frame = 0;
@@ -73,6 +72,7 @@ export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, 
       else groups[track.label] = { label: track.label, count: 1, x: x + width / 2, y: y + height / 2 };
       return groups;
     }, {})).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)).slice(0, 3) : [];
+  const badgeSizes = useBadgeMeasurements(badgesRef, header ?? { width: 0, height: 0 }, labels.map(item => ({ id: item.label, text: `${LABEL_INFO[item.label].plural} ${item.count}` })));
   const placements = validFrame && header.face ? layoutBadges(labels.map((item, index) => ({
     id: item.label, x: item.x / item.count, y: item.y / item.count,
     width: badgeSizes.widths[index] || (60 + `${LABEL_INFO[item.label].plural} ${item.count}`.length * 8) / badgeSizes.scale,
@@ -83,9 +83,9 @@ export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, 
       <canvas ref={canvasRef} role="img" aria-label="Live camera with skin detection overlays" />
       <div ref={badgesRef} className="live-badges" style={{ width: `${Math.min(100, frameAspect / (16 / 9) * 100)}%`, height: `${Math.min(100, (16 / 9) / frameAspect * 100)}%` }}>{placements.map(placement => {
         const item = labels.find(label => label.label === placement.id)!;
-        return <FloatingBadge key={item.label} x={placement.x / header!.width * 100} y={placement.y / header!.height * 100}
+        return <span key={item.label} style={{ "--badge-space": `${(placement.side === "left" ? placement.x : header!.width - placement.x) / header!.width * 100}%` } as CSSProperties}><FloatingBadge x={placement.x / header!.width * 100} y={placement.y / header!.height * 100}
           leader={{ x: placement.anchorX / header!.width * 100, y: placement.anchorY / header!.height * 100 }} side={placement.side}
-          icon={<ScanFaceIcon />}>{LABEL_INFO[item.label].plural} {item.count}</FloatingBadge>;
+          icon={<ScanFaceIcon />}>{LABEL_INFO[item.label].plural} {item.count}</FloatingBadge></span>;
       })}</div>
       {(!header || !header.face || connection !== 'connected') && <p className="empty-camera" aria-hidden="true">
         {!header || connection !== 'connected' ? 'Connecting to camera...' : 'No face detected - centre your face in even, diffuse light'}

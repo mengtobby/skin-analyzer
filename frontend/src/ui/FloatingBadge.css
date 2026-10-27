@@ -6,3 +6,6 @@
 .ui-floating-badge__leader { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .ui-floating-badge__leader line { stroke: rgba(255, 255, 255, .7); stroke-width: 1px; }
 .ui-floating-badge__leader circle { fill: var(--peach, #f4b08c); }
+
+.live-badges .ui-floating-badge, .blemish-map .ui-floating-badge { box-sizing: border-box; max-width: max(1px, calc(var(--badge-space, 100%) - 8px)); white-space: nowrap; overflow: hidden; }
+.ui-floating-badge__icon { flex-shrink: 0; }

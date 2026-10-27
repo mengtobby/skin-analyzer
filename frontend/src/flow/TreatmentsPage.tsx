@@ -21,7 +21,7 @@ function IngredientCard({ ingredient, shared }: { ingredient: Ingredient; shared
   const cautions = ingredient.cautions.filter(caution => !shared.includes(caution));
   return <Card className="ingredient-card">
     <header className="ingredient-header"><h3>{ingredient.name}</h3>
-      <div className="ingredient-score"><ScoreRing value={score} label="Recommendation match" size={72} decorative showValue /><span className="sr-only">Recommendation match</span></div>
+      <div className="ingredient-score"><ScoreRing value={score} label="Recommendation match" size={72} decorative showValue suffix="%" /><span className="sr-only">Recommendation match</span></div>
     </header>
     <ul className="ingredient-reasons">{(reasons.length ? reasons : [ingredient.rationale]).map((reason, i) => <li key={i}>{reason}</li>)}</ul>
     <progress className="sr-only" max={100} value={score} aria-label={`${ingredient.name} recommendation match`} />

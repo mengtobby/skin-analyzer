@@ -1,4 +1,6 @@
 import "@testing-library/jest-dom/vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { LiveView } from "./LiveView";
@@ -8,6 +10,8 @@ import * as badgeLayout from "../lib/badgeLayout";
 import { BlemishMap } from "../flow/BlemishMap";
 vi.mock("../overlay/mesh", async importOriginal => ({ ...await importOriginal<typeof import("../overlay/mesh")>(), drawFaceMesh: vi.fn() }));
 import { frameFixture, reportFixture } from "../protocol/fixtures";
+
+const badgeStyles = readFileSync(resolve(process.cwd(), "src/ui/FloatingBadge.css"), "utf8");
 
 beforeEach(() => {
   vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
@@ -124,7 +128,7 @@ it('places label badges beside the face and leads to the centroid of their track
   expect(screen.getByText(`${LABEL_INFO.papule.plural} 2`)).toBeVisible();
 });
 
-it.each([[0, 720], [1280, 0], [NaN, 720], [1280, Infinity]])('omits badges for invalid frame dimensions %s × %s', (width, height) => {
+it.each([[0, 720], [1280, 0], [NaN, 720], [1280, Infinity]])('omits badges for invalid frame dimensions %s Ã— %s', (width, height) => {
   const ctx = { setTransform: vi.fn(), clearRect: vi.fn(), drawImage: vi.fn() };
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
   let callback: FrameRequestCallback = () => undefined;
@@ -159,25 +163,40 @@ it('exposes the canvas as a named image and hides duplicate overlay guidance', (
 
 it('feeds measured badge dimensions to layout in image pixels and updates on resize', () => {
   let badgeWidth = 150;
+  const created = vi.fn();
   let resized: ResizeObserverCallback = () => undefined;
   const disconnect = vi.fn();
   vi.stubGlobal('ResizeObserver', class {
-    constructor(callback: ResizeObserverCallback) { resized = callback; }
+    constructor(callback: ResizeObserverCallback) { created(); resized = callback; }
     observe() { /* Measurements are triggered explicitly below. */ }
     disconnect = disconnect;
   });
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+  const measure = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
     const width = this.classList.contains('live-badges') ? 640 : this.classList.contains('ui-floating-badge') ? badgeWidth : 0;
     return { width, height: this.classList.contains('live-badges') ? 360 : 50, x: 0, y: 0, top: 0, left: 0, right: width, bottom: 0, toJSON: () => ({}) };
   });
   const layout = vi.spyOn(badgeLayout, 'layoutBadges');
-  const { container, unmount } = render(<LiveView bitmapRef={{ current: null }} headerRef={{ current: frameFixture }} header={frameFixture} connection="connected" sendReset={vi.fn()} />);
+  const { container, unmount, rerender } = render(<LiveView bitmapRef={{ current: null }} headerRef={{ current: frameFixture }} header={frameFixture} connection="connected" sendReset={vi.fn()} />);
   expect(layout.mock.calls[0][0][0].width).toBeGreaterThan(0);
   expect(layout).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ width: 300 })]), frameFixture.face!.bbox, frameFixture, { badgeHeight: 100, margin: 16 });
-  expect(container.querySelector<HTMLElement>('.ui-floating-badge')!.style.maxWidth).toBe('624px');
+  const calls = measure.mock.calls.length;
+  rerender(<LiveView bitmapRef={{ current: null }} headerRef={{ current: frameFixture }} header={{ ...frameFixture, frame_id: 999 }} connection="connected" sendReset={vi.fn()} />);
+  expect(measure).toHaveBeenCalledTimes(calls);
+  expect(created).toHaveBeenCalledOnce();
+  const area = container.querySelector<HTMLElement>('.live-badges')!;
+  expect(container.querySelector<HTMLElement>('.ui-floating-badge')!.parentElement!.style.getPropertyValue('--badge-space')).not.toBe('');
+
   badgeWidth = 190;
-  act(() => resized([], {} as ResizeObserver));
-  expect(layout).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ width: 380 })]), frameFixture.face!.bbox, frameFixture, { badgeHeight: 100, margin: 16 });
+  const entry: ResizeObserverEntry = {
+    target: area,
+    contentRect: { x: 0, y: 0, width: 640, height: 359, top: 0, right: 640, bottom: 359, left: 0, toJSON: () => ({}) },
+    borderBoxSize: [{ inlineSize: 640, blockSize: 359 }],
+    contentBoxSize: [{ inlineSize: 640, blockSize: 359 }],
+    devicePixelContentBoxSize: [{ inlineSize: 640, blockSize: 359 }],
+  };
+  act(() => resized([entry], {} as ResizeObserver));
+  expect(layout).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ width: 190 / (359 / 720) })]), frameFixture.face!.bbox, expect.objectContaining({ frame_id: 999 }), { badgeHeight: 50 / (359 / 720), margin: 8 / (359 / 720) });
+  expect(measure).toHaveBeenCalledTimes(calls + 1);
   unmount();
   expect(disconnect).toHaveBeenCalled();
 });
@@ -199,6 +218,12 @@ it.each([0, 1440])('keeps the measured selected-area badge inside the results fr
   const left = Number.parseFloat(badge.style.left) / 100 * 390;
   const top = Number.parseFloat(badge.style.top) / 100 * 720;
   expect(badge).toHaveClass('ui-floating-badge--right');
+  const stylesheet = document.createElement('style');
+  stylesheet.textContent = badgeStyles;
+  document.head.append(stylesheet);
+  expect(getComputedStyle(badge).whiteSpace).toBe('nowrap');
+  expect(container.querySelector<HTMLElement>('.blemish-map')!.style.getPropertyValue('--badge-space')).not.toBe('');
+  stylesheet.remove();
   expect(left).toBeGreaterThanOrEqual(8);
   expect(left + 230).toBeLessThanOrEqual(382);
   expect(top - 30).toBeGreaterThanOrEqual(8);
