@@ -8,6 +8,55 @@ it('places inner edges beside the face and preserves anchors and input order', (
   ]);
 });
 
+it('tries the other side before moving vertically to avoid markers', () => {
+  const [badge] = layoutBadges([{ id: 1, x: 130, y: 100, width: 100 }], [150, 0, 100, 300], { width: 500, height: 300 }, { obstacles: [[108, 78, 44, 44]] });
+  expect(badge).toMatchObject({ side: 'right', y: 100, anchorX: 130, anchorY: 100 });
+});
+
+it.each([0, 1440])('moves a clamped edge badge inward without changing its column at y=%s', y => {
+  const [badge] = layoutBadges([{ id: 1, x: 740, y, width: 460 }], [400, 20, 350, 1300], { width: 780, height: 1440 }, {
+    badgeHeight: 120, margin: 16, obstacles: [[696, y - 44, 88, 88]],
+  });
+  expect(badge.side).toBe('right');
+  expect(badge.x).toBeGreaterThanOrEqual(16);
+  expect(badge.x + 460).toBeLessThanOrEqual(764);
+  expect(Math.abs(badge.y - y)).toBeGreaterThanOrEqual(108);
+  expect(badge.y - 60).toBeGreaterThanOrEqual(16);
+  expect(badge.y + 60).toBeLessThanOrEqual(1424);
+  expect(badge.anchorY).toBe(y);
+});
+
+it('steps above and below the anchor when both sides overlap marker targets on a phone', () => {
+  const obstacles: [number, number, number, number][] = [[78, 128, 44, 44], [268, 128, 44, 44], [78, 84, 44, 44]];
+  const [badge] = layoutBadges([{ id: 1, x: 100, y: 150, width: 240 }], [20, 0, 350, 300], { width: 390, height: 300 }, { badgeHeight: 44, obstacles });
+  const left = badge.side === 'left' ? badge.x - 240 : badge.x;
+  for (const [x, y, w, h] of obstacles) {
+    expect(left + 240 <= x || left >= x + w || badge.y + 22 <= y || badge.y - 22 >= y + h).toBe(true);
+  }
+  expect(Math.abs(badge.y - 150)).toBeGreaterThan(44);
+  expect(badge.anchorY).toBe(150);
+});
+
+it('preserves desktop placement when marker targets do not overlap', () => {
+  const anchors = [{ id: 1, x: 430, y: 200, width: 180 }];
+  const face: [number, number, number, number] = [300, 100, 600, 500];
+  const frame = { width: 1280, height: 720 };
+  expect(layoutBadges(anchors, face, frame, { obstacles: [[408, 178, 44, 44]] })).toEqual(layoutBadges(anchors, face, frame));
+});
+
+it('keeps the least-overlapping candidate when no clear position exists', () => {
+  const [badge] = layoutBadges([{ id: 1, x: 20, y: 50, width: 80 }], [0, 0, 200, 100], { width: 200, height: 100 }, { obstacles: [[0, 0, 120, 100], [0, 0, 200, 100]] });
+  expect(badge.side).toBe('right');
+  expect(badge.x).toBe(112);
+});
+
+it('ignores invalid obstacle rectangles', () => {
+  const anchors = [{ id: 1, x: 130, y: 100 }];
+  const face: [number, number, number, number] = [150, 0, 100, 300];
+  const frame = { width: 500, height: 300 };
+  expect(layoutBadges(anchors, face, frame, { obstacles: [[NaN, 0, 20, 20], [0, 0, -1, 100]] })).toEqual(layoutBadges(anchors, face, frame));
+});
+
 it('resolves collisions near the bottom while keeping each badge inside the frame', () => {
   const result = layoutBadges([190, 192, 194].map((y, id) => ({ id, x: 120, y })), [100, 0, 200, 200], { width: 400, height: 200 }, { gap: 10, badgeHeight: 40, margin: 0 });
   expect(result.map(item => item.y)).toEqual([80, 130, 180]);

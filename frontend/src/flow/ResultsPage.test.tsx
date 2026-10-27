@@ -152,16 +152,48 @@ it("keeps the type heading plain and actions in visual DOM order", () => {
 it("places the selected badge outside the face with a leader to its marker", () => {
   const data = snapshot();
   data.header.face = { bbox: [300, 100, 600, 500], zones: [] };
+  data.header.tracks[0].bbox = [410, 200, 40, 40];
   const { container } = render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
   const badge = container.querySelector<HTMLElement>(".selected-area-badge")!;
   expect(badge).toHaveClass("ui-floating-badge--left");
   expect(container.querySelector<HTMLElement>(".blemish-map")?.style.getPropertyValue("--badge-space")).toBe(`${288 / 1280 * 100}%`);
   expect(parseFloat(badge.style.left) / 100 * data.width).toBeLessThan(300);
   const leader = container.querySelector(".ui-floating-badge__leader line")!;
-  expect(leader).toHaveAttribute("x2", `${130 / 1280 * 100}%`);
+  expect(leader).toHaveAttribute("x2", `${430 / 1280 * 100}%`);
   fireEvent.click(screen.getByRole("button", { name: "Comedone 1, left cheek, details" }));
   expect(badge).toHaveClass("ui-floating-badge--right");
   expect(parseFloat(badge.style.left) / 100 * data.width).toBeGreaterThan(900);
+});
+
+it.each([390, 1280])("keeps the selected badge clear of every 44px marker target at %ipx", frameWidth => {
+  const data = snapshot();
+  data.header.face = { bbox: [20, 0, 1240, 720], zones: [] };
+  data.header.tracks[0].bbox = [380, 340, 40, 40];
+  data.header.tracks[1].bbox = [860, 340, 40, 40];
+  const scale = frameWidth / data.width;
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const width = this.classList.contains("blemish-map") ? frameWidth : this.classList.contains("ui-floating-badge") ? 240 : 0;
+    const height = this.classList.contains("blemish-map") ? data.height * scale : this.classList.contains("ui-floating-badge") ? 44 : 0;
+    return { x: 0, y: 0, left: 0, top: 0, right: width, bottom: height, width, height, toJSON: () => ({}) };
+  });
+  const { container } = render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const assertClear = () => {
+    const badge = container.querySelector<HTMLElement>(".selected-area-badge")!;
+    const innerEdge = parseFloat(badge.style.left) / 100 * frameWidth;
+    const left = badge.classList.contains("ui-floating-badge--left") ? innerEdge - 240 : innerEdge;
+    const centreY = parseFloat(badge.style.top) / 100 * data.height * scale;
+    for (const marker of container.querySelectorAll<HTMLElement>(".blemish-marker")) {
+      const x = parseFloat(marker.style.left) / 100 * frameWidth;
+      const y = parseFloat(marker.style.top) / 100 * data.height * scale;
+      expect(left + 240 <= x - 22 || left >= x + 22 || centreY + 22 <= y - 22 || centreY - 22 >= y + 22).toBe(true);
+    }
+    if (frameWidth === 1280) expect(centreY).toBe(360);
+    const leader = container.querySelector(".ui-floating-badge__leader line")!;
+    expect(leader).toHaveAttribute("y2", "50%");
+  };
+  assertClear();
+  fireEvent.click(screen.getByRole("button", { name: "Comedone 1, left cheek, details" }));
+  assertClear();
 });
 
 it("hides Type, flattens measurements, and renders each score value only once", () => {
