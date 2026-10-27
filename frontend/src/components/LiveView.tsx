@@ -2,10 +2,12 @@ import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { FrameHeader } from "../protocol/types";
 import { drawOverlay } from "../overlay/draw";
 import type { Connection } from "../stream/useSkinStream";
-import { drawFaceMesh, meshFromZones } from "../overlay/mesh";
+import { drawFaceMesh, meshFromFace } from "../overlay/mesh";
+import { layoutBadges } from "../lib/badgeLayout";
 import { LABEL_INFO } from "../lib/blemishInfo";
 import type { Label } from "../protocol/types";
-import { Button, FloatingBadge, ScanFaceIcon } from "../ui";
+import { Button, ScanFaceIcon } from "../ui";
+import { FloatingBadge } from "../ui/FloatingBadge";
 interface LiveViewProps {
   bitmapRef: MutableRefObject<ImageBitmap | null>;
   headerRef: MutableRefObject<FrameHeader | null>;
@@ -25,7 +27,7 @@ function drawFrame(canvas: HTMLCanvasElement | null, bitmap: ImageBitmap | null,
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  if (!bitmap || !header) return;
+  if (!bitmap || !header || !Number.isFinite(header.width) || !Number.isFinite(header.height) || header.width <= 0 || header.height <= 0) return;
   const scale = Math.min(width / header.width, height / header.height);
   ctx.save();
   ctx.translate((width - header.width * scale) / 2, (height - header.height * scale) / 2);
@@ -34,7 +36,7 @@ function drawFrame(canvas: HTMLCanvasElement | null, bitmap: ImageBitmap | null,
   if (header.face) {
     const [x, y, w, h] = header.face.bbox;
     const highlightY = scanProgress === undefined || !Number.isFinite(scanProgress) ? undefined : y + h * Math.max(0, Math.min(1, scanProgress));
-    drawFaceMesh(ctx, meshFromZones(header.face.zones), scale, { highlightY });
+    drawFaceMesh(ctx, meshFromFace(header.face), scale, { highlightY });
     if (highlightY !== undefined && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       const band = ctx.createLinearGradient(0, (highlightY - 18) * scale, 0, (highlightY + 18) * scale);
       band.addColorStop(0, 'rgba(244,176,140,0)');
@@ -58,23 +60,29 @@ export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, 
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
   }, [bitmapRef, headerRef, overlay, scanProgress]);
-  const frameAspect = header && header.width > 0 && header.height > 0 ? header.width / header.height : 16 / 9;
-  const labels = header?.face && connection === 'connected'
-    ? Object.values(header.tracks.reduce<Partial<Record<Label, { label: Label; count: number; zone: string }>>>((groups, track) => {
+  const validFrame = header && Number.isFinite(header.width) && Number.isFinite(header.height) && header.width > 0 && header.height > 0;
+  const frameAspect = validFrame ? header.width / header.height : 16 / 9;
+  const labels = validFrame && header.face && connection === 'connected'
+    ? Object.values(header.tracks.reduce<Partial<Record<Label, { label: Label; count: number; x: number; y: number }>>>((groups, track) => {
+      const [x, y, width, height] = track.bbox;
+      if (!track.bbox.every(Number.isFinite) || width < 0 || height < 0) return groups;
       const group = groups[track.label];
-      if (group) group.count += 1;
-      else groups[track.label] = { label: track.label, count: 1, zone: track.zone };
+      if (group) { group.count += 1; group.x += x + width / 2; group.y += y + height / 2; }
+      else groups[track.label] = { label: track.label, count: 1, x: x + width / 2, y: y + height / 2 };
       return groups;
     }, {})).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)).slice(0, 3) : [];
+  const placements = validFrame && header.face ? layoutBadges(labels.map(item => ({
+    id: item.label, x: item.x / item.count, y: item.y / item.count,
+  })), header.face.bbox, header) : [];
   return <section className="panel live-panel" aria-labelledby="live-title">
     <div className="panel-heading"><h2 id="live-title">Live analysis</h2></div>
     <div className="canvas-wrap" data-frame-id={header?.frame_id}>
       <canvas ref={canvasRef} role="img" aria-label="Live camera with skin detection overlays" />
-      <div className="live-badges" style={{ width: `${Math.min(100, frameAspect / (16 / 9) * 100)}%`, height: `${Math.min(100, (16 / 9) / frameAspect * 100)}%` }}>{labels.map((item, index) => {
-        const polygon = header?.face?.zones.find(zone => zone.zone === item.zone)?.polygon ?? [];
-        const x = polygon.length ? polygon.reduce((sum, point) => sum + point[0], 0) / polygon.length / header!.width * 100 : 50;
-        const y = polygon.length ? polygon.reduce((sum, point) => sum + point[1], 0) / polygon.length / header!.height * 100 : 25 + index * 25;
-        return <FloatingBadge key={item.label} x={Math.max(18, Math.min(82, x))} y={Math.max(12, Math.min(88, y + index * 12))} icon={<ScanFaceIcon />}>{LABEL_INFO[item.label].plural} {item.count}</FloatingBadge>;
+      <div className="live-badges" style={{ width: `${Math.min(100, frameAspect / (16 / 9) * 100)}%`, height: `${Math.min(100, (16 / 9) / frameAspect * 100)}%` }}>{placements.map(placement => {
+        const item = labels.find(label => label.label === placement.id)!;
+        return <FloatingBadge key={item.label} x={placement.x / header!.width * 100} y={placement.y / header!.height * 100}
+          leader={{ x: placement.anchorX / header!.width * 100, y: placement.anchorY / header!.height * 100 }} side={placement.side}
+          icon={<ScanFaceIcon />}>{LABEL_INFO[item.label].plural} {item.count}</FloatingBadge>;
       })}</div>
       {(!header || !header.face || connection !== 'connected') && <p className="empty-camera" aria-hidden="true">
         {!header || connection !== 'connected' ? 'Connecting to camera...' : 'No face detected - centre your face in even, diffuse light'}
