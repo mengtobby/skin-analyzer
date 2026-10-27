@@ -1,16 +1,66 @@
-.settings-page { max-width: 800px; display: grid; gap: 24px; }
-.camera-settings fieldset { border: 0; padding: 0; margin: 24px 0; min-width: 0; }
+.settings-page { max-width: 800px; display: grid; gap: 32px; }
+.settings-page > .panel {
+  background: var(--surface);
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.camera-settings fieldset { border: 0; padding: 0; margin: 28px 0; min-width: 0; }
 .camera-settings legend { font-weight: 600; margin-bottom: 12px; }
-.camera-option { display: flex; align-items: center; gap: 12px; padding: 16px; margin: 8px 0; border: 1px solid var(--border); border-radius: 16px; cursor: pointer; background: var(--surface); }
-.camera-option:has(input:checked) { border-color: var(--accent); background: #fff6f1; }
+.camera-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 16px 20px;
+  margin: 10px 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-inner);
+  cursor: pointer;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.camera-option:hover { border-color: var(--ink); }
+.camera-option:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .camera-option:has(input:disabled) { opacity: .6; cursor: not-allowed; }
+.camera-option input[type='radio'] {
+  appearance: none;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 1px solid var(--control-border);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.camera-option input[type='radio']:checked {
+  border-color: var(--ink);
+  background: var(--peach) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141815' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12 4 4 8-8'/%3E%3C/svg%3E") center / 20px no-repeat;
+}
 .camera-scan { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
-.stream-address { margin: 16px 0; }
-.stream-address label { display: block; margin-bottom: 8px; }
-.stream-address input { width: 100%; }
-.camera-settings [role='alert'] { color: #ad321d; overflow-wrap: anywhere; }
-.camera-settings [role='status'] { color: #28724c; overflow-wrap: anywhere; }
-.camera-settings #stream-error { color: var(--accent-text); }
+.camera-scan button { min-height: 44px; border-color: var(--control-border); }
+.stream-address { margin: 24px 0 0; }
+.stream-address label { display: block; margin-bottom: 8px; font-weight: 600; }
+.stream-address input[type='url'] { width: 100%; border: 1px solid var(--control-border); border-radius: 20px; }
+.stream-address input:focus-visible { outline-color: var(--ink); box-shadow: 0 0 0 4px var(--peach); }
+.camera-settings .settings-apply { min-height: 48px; padding: 12px 32px; border-radius: var(--radius-pill); background: var(--ink); border-color: var(--ink); color: white; font-weight: 600; }
+.camera-settings .settings-apply:hover:not(:disabled) { background: var(--ink-hover); border-color: var(--ink-hover); }
+.camera-settings [role='alert'] { color: var(--accent-text); overflow-wrap: anywhere; }
+.camera-settings [role='status'] { color: var(--success); overflow-wrap: anywhere; }
 .stream-address input[aria-invalid='true'] { border-color: var(--accent-text); }
 .camera-settings [role='alert']:empty,
 .camera-settings [role='status']:empty { margin: 0; }
+@supports (backdrop-filter: blur(24px)) {
+  .settings-page > .panel, .camera-option {
+    background: var(--surface-glass);
+    backdrop-filter: blur(var(--blur)) saturate(1.2);
+  }
+}
+@media (max-width: 600px) {
+  .settings-page { gap: 24px; }
+  .camera-option { padding: 14px 16px; }
+}
+@media (forced-colors: active) {
+  .camera-option input[type='radio'] { appearance: auto; }
+  .camera-option:has(input:checked) { outline: 2px solid Highlight; }
+}

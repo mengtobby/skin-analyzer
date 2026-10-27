@@ -7,7 +7,7 @@ import type { SkinStream } from "./useScan";
 import { readFileSync } from "node:fs";
 import { URL as NodeURL } from "node:url";
 const flowCss = readFileSync(new NodeURL("./flow.css", import.meta.url), "utf-8");
-vi.mock('../components/LiveView', () => ({ LiveView: () => <div>Live camera</div> }));
+vi.mock('../components/LiveView', () => ({ LiveView: ({ scanProgress }: { scanProgress?: number }) => <div data-testid="live-camera" data-scan-progress={scanProgress}>Live camera</div> }));
 function stream(): SkinStream {
   const header = { ...frameFixture, quality: { ...qualityFixture, ok: true, issues: [] } };
   return { header, headerRef: { current: header }, displayHeaderRef: { current: header },
@@ -38,6 +38,7 @@ it('counts down and captures using a report received after starting', () => {
   const { rerender } = render(<CameraPage stream={s} onCapture={onCapture} />);
   fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
   act(() => vi.advanceTimersByTime(1000)); expect(screen.getByText('Hold still... 2 seconds', { exact: true })).toBeVisible();
+  expect(Number(screen.getByTestId('live-camera').getAttribute('data-scan-progress'))).toBeGreaterThan(0);
   const fresh = { ...reportFixture, disclaimer: 'Fresh report' };
   rerender(<CameraPage stream={{ ...s, report: fresh }} onCapture={onCapture} />);
   act(() => vi.advanceTimersByTime(2000));

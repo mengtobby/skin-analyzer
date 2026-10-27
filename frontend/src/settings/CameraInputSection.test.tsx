@@ -41,6 +41,21 @@ it("disables controls while connecting then announces success", async () => {
   expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
 });
 
+it("exposes the selected option row through its checked native radio", async () => {
+  render(<CameraInputSection />);
+  const current = await screen.findByRole("radio", { name: /Camera 1/ });
+  const next = screen.getByRole("radio", { name: /Camera 2/ });
+  expect(current.closest(".camera-option")).toContainElement(current);
+  expect(current).toBeChecked();
+  const row = next.closest("label");
+  expect(row).toHaveClass("camera-option");
+  fireEvent.click(row!);
+  expect(next).toBeChecked();
+  expect(current).not.toBeChecked();
+  expect(next).toHaveAttribute("type", "radio");
+  expect(next).toHaveAttribute("name", "camera-source");
+});
+
 it("validates stream protocols and clears the URL after success", async () => {
   render(<CameraInputSection />);
   await screen.findByText("Camera 1");

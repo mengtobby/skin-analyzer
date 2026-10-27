@@ -39,7 +39,7 @@ it("positions every marker proportionally and shares selection with the grouped 
   expect(screen.getByText("Occlusive products")).toBeVisible();
   expect(screen.getByText("Chin: monitor persistent irritation")).toBeVisible();
   expect(screen.getByText("4.2 mm")).toBeVisible();
-  expect(screen.getByText("82%")).toBeVisible();
+  expect(within(detail).getByText("82%")).toBeVisible();
   fireEvent.click(second);
   expect(screen.getByRole("status")).toHaveTextContent("Showing Comedone 1, left cheek");
   expect(second).toHaveAttribute("aria-pressed", "true");
@@ -89,4 +89,46 @@ it("limits marker motion and keeps a static size cue for selection", () => {
   expect(resultsCss).not.toMatch(/blemish-pulse[^;]*infinite/);
   expect(resultsCss).toMatch(/\[aria-pressed="true"\] span\s*\{[^}]*transform:\s*scale\(1\.25\)/);
   expect(resultsCss).toMatch(/prefers-reduced-motion:\s*reduce[^}]*animation:\s*none/);
+});
+
+
+it("filters markers and list groups, selects a visible area, and restores all areas", () => {
+  render(<ResultsPage snapshot={snapshot()} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const filters = within(screen.getByRole("group", { name: "Filter areas" }));
+  expect(filters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(filters.getByRole("button", { name: LABEL_INFO.comedone.plural }));
+  expect(screen.queryByRole("button", { name: "Papule 1, chin, details" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Papule 1, chin" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: /Papules/ })).toBeNull();
+  expect(screen.getByRole("button", { name: "Comedone 1, left cheek, details" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Comedone 1, left cheek" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(filters.getByRole("button", { name: "All" }));
+  expect(screen.getByRole("button", { name: "Papule 1, chin, details" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Papules (1)" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Comedone 1, left cheek, details" })).toHaveAttribute("aria-pressed", "true");
+});
+
+it("shows the selected marker's real name and confidence in a floating badge", () => {
+  const data = snapshot();
+  data.header.tracks[1].confidence = 0.67;
+  const { container } = render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const badge = container.querySelector(".selected-area-badge")!;
+  expect(badge).toHaveTextContent("Papule 1, chin");
+  expect(badge).toHaveTextContent("82%");
+  fireEvent.click(screen.getByRole("button", { name: "Comedone 1, left cheek, details" }));
+  expect(badge).toHaveTextContent("Comedone 1, left cheek");
+  expect(badge).toHaveTextContent("67%");
+  expect(screen.getByRole("img", { name: "Redness 41 out of 100" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Redness" }).parentElement).toHaveTextContent("41 / 100");
+});
+
+it("renders the captured zone mesh beneath the interactive markers", () => {
+  const data = snapshot();
+  data.header.face = { bbox: [0, 0, 100, 100], zones: [{ zone: "chin", polygon: [[10, 10], [80, 10], [45, 80]] }] };
+  const { container } = render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const mesh = container.querySelector(".scan-mesh")!;
+  expect(mesh.closest("svg")).toHaveAttribute("aria-hidden", "true");
+  expect(mesh.querySelectorAll("circle")).toHaveLength(4);
+  expect(mesh.querySelectorAll("line")).toHaveLength(6);
+  expect(screen.getAllByRole("button", { name: /, details$/ })).toHaveLength(2);
 });

@@ -57,3 +57,48 @@
 .ingredient-reasons { margin: 0; padding-inline-start: 18px; display: grid; gap: 8px; }
 .treatment-note { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 20px; padding: 14px 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--muted); }
 .treatment-note svg { flex: none; width: 20px; height: 20px; margin-top: 2px; }
+
+/* Results and treatments inherit the shared sage and frosted surface system. */
+.analysis-results { color: var(--text, #141815); }
+.result-heading p, .result-muted { color: var(--muted, #536057); }
+.results-layout { gap: 24px; }
+.blemish-map { border-radius: 28px; background: #f7f9f7; border: 1px solid #ffffffb8; box-shadow: 0 18px 40px -20px rgb(31 48 40 / 28%); margin-bottom: 20px; }
+.scan-mesh line { stroke: #fff; stroke-opacity: .65; stroke-width: 1; stroke-dasharray: 2 4; }
+.scan-mesh circle { fill: #fff; fill-opacity: .9; }
+.selected-area-badge { pointer-events: none; max-width: calc(100% - 24px); white-space: normal; font-size: clamp(.7rem, 1.6vw, .875rem); }
+.blemish-marker:focus-visible, .blemish-list button:focus-visible, .recommendation-row:focus-visible { outline: 3px solid var(--accent, #b45125); outline-offset: 3px; }
+.blemish-list button, .recommendation-row, .treatment-routines h3 { background: #f7f9f7; border: 1px solid #ffffffb8; box-shadow: 0 18px 40px -20px rgb(31 48 40 / 28%); }
+.blemish-list button { align-items: center; justify-content: flex-start; border-radius: 20px; min-height: 64px; gap: 10px; }
+.blemish-list button[aria-pressed="true"] { border-color: var(--ink, #141815); background: var(--surface, #f7f9f7); box-shadow: inset 0 0 0 1px var(--ink, #141815); }
+.blemish-list button .area-zone { margin-left: auto; color: var(--muted, #536057); font-size: .875rem; }
+.area-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; outline: 1px solid var(--ink, #141815); }
+.area-chevron, .recommendation-icon, .recommendation-arrow, .routine-icon { display: inline-grid; place-items: center; border-radius: 50%; flex: none; }
+.blemish-list button .area-chevron { width: 32px; height: 32px; color: white; background: var(--ink, #141815); }
+.area-chevron svg { width: 18px; height: 18px; }
+.blemish-measurements { border: 0; padding: 0; gap: 12px; }
+.blemish-measurements > div { flex: 1; padding: 16px; background: var(--surface-soft, #e8edea); border-radius: 18px; }
+.skin-scores > section { text-align: center; padding: 24px 16px; }
+.skin-scores .ui-score-ring { margin-bottom: 16px; max-width: 100%; height: auto; }
+.skin-score-value { font-size: 1.5rem; margin: 8px 0; }
+.result-callout { background: #f4b08c38; border-color: #c8632f; border-radius: 20px; }
+.result-actions { border: 0; align-items: center; }
+.recommendation-row { display: flex; align-items: center; gap: 16px; width: 100%; padding: 16px 20px; border-radius: 24px; font: inherit; font-weight: 600; color: var(--ink, #141815); cursor: pointer; order: -1; text-align: left; }
+.recommendation-row:hover { background: #f7f9f7; }
+.recommendation-icon, .recommendation-arrow { width: 44px; height: 44px; background: var(--ink, #141815); color: white; }
+.recommendation-icon { color: var(--peach, #f4b08c); }
+.recommendation-arrow { margin-left: auto; }
+.ingredient-score { align-items: center; justify-content: flex-start; }
+.ingredient-score > span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; }
+.treatment-routines h3 { padding: 14px 18px; border-radius: 20px; }
+.routine-icon { width: 40px; height: 40px; background: var(--peach, #f4b08c); color: var(--ink, #141815); }
+.active-chips .ui-badge { padding: 8px 14px; border: 1px solid var(--control-border, #78877d); border-radius: 999px; background: var(--surface-soft, #e8edea); color: var(--text, #141815); }
+.treatment-caution { color: #77411e; }
+@supports (backdrop-filter: blur(1px)) {
+  .blemish-map, .blemish-list button, .recommendation-row, .treatment-routines h3 { background: rgb(255 255 255 / 72%); backdrop-filter: blur(24px) saturate(1.2); }
+  .blemish-list button[aria-pressed="true"] { background: rgb(255 255 255 / 85%); }
+}
+@media (max-width: 540px) {
+  .result-actions { align-items: stretch; }
+  .selected-area-badge { gap: 5px; padding: 8px 10px; }
+  .blemish-list button { padding: 12px; }
+}

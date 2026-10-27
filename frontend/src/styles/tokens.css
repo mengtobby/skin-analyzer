@@ -1,17 +1,28 @@
 :root {
   color-scheme: light;
-  --bg: #f7f6f4;
-  --surface: #fff;
-  --border: #ebe8e3;
-  --text: #1d1b19;
-  --muted: #6e6a64;
-  --accent: #d4471f; /* icons, wordmark, selected outlines (3:1 non-text) */
-  --accent-text: #b93c17; /* accent-coloured text such as links (4.5:1) */
-  --control-border: #8f8a82; /* text-field outlines (3:1 non-text) */
-  --progress: #2563eb;
-  --radius-card: 24px;
+  --bg: #e8edea;
+  --surface: #f7f9f7;
+  --surface-glass: rgb(255 255 255 / 72%);
+  --border: #d4ddd6;
+  --text: #141815;
+  --muted: #536057;
+  --accent: #b95729;
+  --accent-text: #9c4520;
+  --peach: #f4b08c;
+  --ink: #141815;
+  --ink-hover: #303c33;
+  --control-border: #758278;
+  --progress: #141815;
+  --success: #286343;
+  --success-soft: #e1eee4;
+  --warning: #795015;
+  --warning-soft: #f6e8cf;
+  --radius-card: 28px;
+  --radius-inner: 20px;
   --radius-pill: 999px;
-  --shadow-card: 0 8px 28px rgb(29 27 25 / 4%);
+  --shadow-card: 0 18px 40px -20px rgb(31 48 40 / 28%);
+  --shadow-float: 0 12px 30px -12px rgb(31 48 40 / 35%);
+  --blur: 24px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -20,8 +31,8 @@
   --space-6: 32px;
   --space-7: 48px;
   --space-8: 64px;
-  --font-sans: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
-  --focus-ring: 0 0 0 3px rgb(37 99 235 / 25%);
+  --font-sans: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif;
+  --focus-ring: 0 0 0 3px rgb(185 87 41 / 30%);
   --background: var(--bg);
   --panel: var(--surface);
 }
