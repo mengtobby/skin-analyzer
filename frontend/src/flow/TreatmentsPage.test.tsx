@@ -63,3 +63,10 @@ it("lists multi-condition rationales separately and shows shared cautions once",
   expect(screen.getAllByText(general)).toHaveLength(1);
   expect(within(azelaic).getByText("Temporary stinging can occur.")).toBeVisible();
 });
+
+it("keeps the ingredient match accessible alongside its donut gauge", () => {
+  const data = snapshot();
+  const { container } = render(<TreatmentsPage snapshot={data} onBack={vi.fn()} onRestart={vi.fn()} />);
+  expect(screen.getByRole("progressbar", { name: data.report.ingredients[0].name + " recommendation match" })).toHaveAttribute("value", "80");
+  expect(container.querySelector(".ingredient-score .ui-score-ring")).toHaveAttribute("aria-hidden", "true");
+});

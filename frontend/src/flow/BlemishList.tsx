@@ -1,3 +1,5 @@
+import { ChevronRightIcon } from "../ui";
+import { LABEL_COLORS } from "../overlay/draw";
 import type { Label, Track } from "../protocol/types";
 import { areaName, LABEL_INFO, ZONE_NAMES } from "../lib/blemishInfo";
 
@@ -12,7 +14,7 @@ export function BlemishList({ tracks, selected, onSelect, detailId }: {
       return <div key={label}><h3>{LABEL_INFO[label].plural} <span className="result-muted">({group.length})</span></h3>
         <ul>{group.map((track, index) => <li key={track.id}><button type="button" aria-pressed={track.id === selected}
           aria-label={areaName(track, index)} aria-controls={detailId}
-          onClick={() => onSelect(track.id)}>{LABEL_INFO[label].name} {index + 1}<span>{ZONE_NAMES[track.zone]}</span></button></li>)}</ul>
+          onClick={() => onSelect(track.id)}><i className="area-dot" style={{ background: LABEL_COLORS[label] }} aria-hidden="true" />{LABEL_INFO[label].name} {index + 1}<span className="area-zone">{ZONE_NAMES[track.zone]}</span><span className="area-chevron" aria-hidden="true"><ChevronRightIcon /></span></button></li>)}</ul>
       </div>;
     })}
   </section>;

@@ -1,6 +1,6 @@
 import type { Ingredient, Product } from "../protocol/types";
 import type { AnalysisSnapshot } from "./snapshot";
-import { Badge, Button, Card, ArrowLeftIcon, InfoIcon, RefreshIcon, SunIcon, MoonIcon } from "../ui";
+import { Badge, Button, Card, ArrowLeftIcon, InfoIcon, RefreshIcon, SunIcon, MoonIcon, ScoreRing } from "../ui";
 import "./results.css";
 
 /** The knowledge base joins one sentence per condition with "; " (e.g. "A: x; y.; B: z."),
@@ -16,15 +16,15 @@ function sharedCautions(ingredients: Ingredient[]): string[] {
 }
 
 function IngredientCard({ ingredient, shared }: { ingredient: Ingredient; shared: string[] }) {
-  const score = Math.round(Math.max(0, Math.min(1, ingredient.score)) * 100);
+  const score = Number.isFinite(ingredient.score) ? Math.round(Math.max(0, Math.min(1, ingredient.score)) * 100) : 0;
   const reasons = splitRationale(ingredient.rationale);
   const cautions = ingredient.cautions.filter(caution => !shared.includes(caution));
   return <Card title={ingredient.name} headingLevel={3}>
     {reasons.length > 1
       ? <ul className="ingredient-reasons">{reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul>
       : <p>{reasons[0] ?? ingredient.rationale}</p>}
-    <div className="ingredient-score"><span>Recommendation match</span><span>{score}%</span></div>
-    <progress max={100} value={score} aria-label={`${ingredient.name} recommendation match`} />
+    <div className="ingredient-score"><ScoreRing value={score} label="Recommendation match" size={64} decorative /><span>Recommendation match</span><span>{score}%</span></div>
+    <progress className="sr-only" max={100} value={score} aria-label={`${ingredient.name} recommendation match`} />
     {cautions.map((caution, i) => <p key={i} className="treatment-caution">{caution}</p>)}
   </Card>;
 }
@@ -39,7 +39,7 @@ function RoutineProduct({ product }: { product: Product }) {
 function Routine({ products, morning }: { products: Product[]; morning: boolean }) {
   const items = products.filter(product => product.routine === (morning ? "AM" : "PM") || product.routine === "AM/PM");
   const name = morning ? "Morning" : "Evening";
-  return <section aria-label={`${name} routine`}><h3 className="result-inline">{morning ? <SunIcon /> : <MoonIcon />}{name}</h3>
+  return <section aria-label={`${name} routine`}><h3 className="result-inline"><span className="routine-icon" aria-hidden="true">{morning ? <SunIcon /> : <MoonIcon />}</span>{name}</h3>
     <div className="routine-stack">{items.map(product => <RoutineProduct key={product.id} product={product} />)}</div>
     {!items.length && <p className="result-muted">No products suggested for this routine.</p>}</section>;
 }
@@ -63,6 +63,6 @@ export function TreatmentsPage({ snapshot, onBack, onRestart }: {
       <ul>{report.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></aside>}
     <aside className="result-disclaimer" aria-label="Disclaimer">{report.disclaimer}</aside>
     <footer className="result-actions"><Button variant="secondary" icon={<ArrowLeftIcon />} onClick={onBack}>Back to results</Button>
-      <Button icon={<RefreshIcon />} onClick={onRestart}>Start a new analysis</Button></footer>
+      <Button variant="cta" icon={<RefreshIcon />} onClick={onRestart}>Start a new analysis</Button></footer>
   </div>;
 }
