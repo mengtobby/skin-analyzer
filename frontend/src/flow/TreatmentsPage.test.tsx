@@ -115,7 +115,10 @@ it("gives long ingredient titles a full-width row above the visible match row", 
   const headerStyles = css.match(/\.ingredient-header\s*\{([^}]+)\}/)![1];
   expect(headerStyles).toMatch(/display: grid;/);
   expect(headerStyles).toMatch(/grid-template-columns: minmax\(0, 1fr\);/);
-  expect(headerStyles).toMatch(/grid-template-rows: minmax\(3\.5rem, auto\) auto;/);
+  expect(headerStyles).toMatch(/grid-template-rows: auto auto;/);
+  // Header rows align only when cards sit side by side; a single column keeps natural height.
+  expect(css).toMatch(/@container \(min-width: 544px\) \{ \.ingredient-header \{ grid-template-rows: minmax\(3\.5rem, auto\) auto; \} \}/);
+  expect(css).toMatch(/\.ingredient-grid \{[^}]*container-type: inline-size;/);
   const titleStyles = css.match(/\.analysis-results \.ingredient-header h3\s*\{([^}]+)\}/)![1];
   expect(titleStyles).toMatch(/hyphens: manual;/);
   expect(titleStyles).toMatch(/overflow-wrap: normal;/);
