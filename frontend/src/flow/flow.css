@@ -24,7 +24,7 @@
 .scan-pill { display: inline-flex; vertical-align: middle; background: var(--peach); border-radius: 999px; padding: .12em .3em; margin-right: .12em; }
 .scan-pill svg { width: .8em; height: .8em; }
 .mesh-face-card, .capture-tips, .live-panel { background: #f7f9f7; border-radius: 28px; border: 1px solid rgb(255 255 255 / 75%); box-shadow: 0 18px 40px -20px rgb(31 48 40 / 28%); }
-.mesh-face-card { position: relative; color: var(--accent); min-width: 0; }
+.mesh-face-card { position: relative; color: var(--accent); min-width: 0; background: radial-gradient(ellipse at 48% 38%, #6c8073 0%, #52665c 72%); }
 .mesh-face-card > svg { display: block; width: 100%; }
 .capture-tips { gap: 0; padding: 28px 8px; }
 .capture-tip { padding: 0 24px; }
@@ -39,7 +39,7 @@
 .camera-layout progress::-webkit-progress-bar { background: var(--border); }
 .camera-layout progress::-webkit-progress-value { background: var(--ink); }
 .camera-layout progress::-moz-progress-bar { background: var(--ink); }
-@supports (backdrop-filter: blur(1px)) { .mesh-face-card, .capture-tips, .live-panel { background: rgb(255 255 255 / 72%); backdrop-filter: blur(24px) saturate(1.2); } }
+@supports (backdrop-filter: blur(1px)) { .mesh-face-card, .capture-tips, .live-panel { backdrop-filter: blur(24px) saturate(1.2); } .capture-tips, .live-panel { background: rgb(255 255 255 / 72%); } }
 @media (max-width: 800px) { .start-hero { grid-template-columns: 1fr; gap: 28px; } .mesh-face-card { max-width: 480px; width: 100%; margin: auto; } .capture-tip { padding: 20px; } .capture-tip + .capture-tip { border-left: 0; border-top: 1px solid var(--border); } .live-panel { padding: 12px; } .live-badges .ui-floating-badge { font-size: 12px; padding: 7px 10px; } }
 .live-badges { inset: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); }
 .camera-page .ui-button--cta[aria-disabled="true"]:hover { background: var(--ink); border-color: var(--ink); }

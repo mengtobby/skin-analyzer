@@ -20,7 +20,6 @@ const landmarks: { name: string; points: Point[] }[] = [
 export function MeshFaceIllustration() {
   return <div className="mesh-face-card" aria-hidden="true">
     <svg viewBox="0 0 380 380" focusable="false">
-      <rect x="12" y="12" width="356" height="356" rx="24" fill="#52665c" />
       <g data-landmark="face-oval" stroke="white" strokeOpacity=".65" strokeWidth="1" strokeDasharray="2 5">{mesh.edges.map(([a, b]) => <line key={`${a}-${b}`} x1={mesh.points[a][0]} y1={mesh.points[a][1]} x2={mesh.points[b][0]} y2={mesh.points[b][1]} />)}</g>
       {mesh.points.map(([x, y], index) => <circle key={index} cx={x} cy={y} r="3" fill="var(--peach, #f4b08c)" />)}
       {landmarks.map(({ name, points }) => <g key={name} data-landmark={name}>
