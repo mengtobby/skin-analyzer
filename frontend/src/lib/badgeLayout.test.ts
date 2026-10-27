@@ -9,13 +9,13 @@ it('places inner edges beside the face and preserves anchors and input order', (
 });
 
 it('resolves collisions near the bottom while keeping each badge inside the frame', () => {
-  const result = layoutBadges([190, 192, 194].map((y, id) => ({ id, x: 120, y })), [100, 0, 200, 200], { width: 400, height: 200 }, { gap: 10, badgeHeight: 40 });
+  const result = layoutBadges([190, 192, 194].map((y, id) => ({ id, x: 120, y })), [100, 0, 200, 200], { width: 400, height: 200 }, { gap: 10, badgeHeight: 40, margin: 0 });
   expect(result.map(item => item.y)).toEqual([80, 130, 180]);
   expect(result.every(item => item.side === 'left')).toBe(true);
 });
 
 it('switches sides when one column is full', () => {
-  const result = layoutBadges(Array.from({ length: 4 }, (_, id) => ({ id, x: 120, y: 50 })), [100, 0, 200, 100], { width: 400, height: 100 }, { gap: 10, badgeHeight: 40 });
+  const result = layoutBadges(Array.from({ length: 4 }, (_, id) => ({ id, x: 120, y: 50 })), [100, 0, 200, 100], { width: 400, height: 100 }, { gap: 10, badgeHeight: 40, margin: 0 });
   expect(result.map(item => item.side)).toEqual(['left', 'left', 'right', 'right']);
   expect(result[1].y - result[0].y).toBeGreaterThanOrEqual(50);
   expect(result[3].y - result[2].y).toBeGreaterThanOrEqual(50);
@@ -23,7 +23,30 @@ it('switches sides when one column is full', () => {
 
 it('clamps inner edges and vertical extents and filters invalid anchors', () => {
   const result = layoutBadges([{ id: 1, x: 0, y: -100 }, { id: 2, x: 500, y: 600 }, { id: 3, x: NaN, y: 0 }], [0, 0, 400, 200], { width: 400, height: 200 }, { badgeHeight: 40 });
-  expect(result.map(({ x, y }) => [x, y])).toEqual([[0, 20], [400, 180]]);
+  expect(result.map(({ x, y }) => [x, y])).toEqual([[88, 28], [312, 172]]);
+});
+
+it('flips a wide right-edge badge into the available left column', () => {
+  const [badge] = layoutBadges([{ id: 1, x: 360, y: 100, width: 180 }], [220, 20, 150, 200], { width: 390, height: 300 });
+  expect(badge.side).toBe('left');
+  expect(badge.x - 180).toBeGreaterThanOrEqual(8);
+  expect(badge.x).toBeLessThanOrEqual(382);
+});
+
+it.each(['left', 'right'] as const)('clamps the complete %s badge when neither column has room', side => {
+  const [badge] = layoutBadges([{ id: 1, x: side === 'left' ? 30 : 350, y: 300, width: 240 }], [20, 0, 350, 300], { width: 390, height: 300 }, { badgeHeight: 60 });
+  expect(badge.side).toBe(side);
+  expect(badge.side === 'left' ? badge.x - 240 : badge.x).toBeGreaterThanOrEqual(8);
+  expect(badge.side === 'left' ? badge.x : badge.x + 240).toBeLessThanOrEqual(382);
+  expect(badge.y).toBe(262);
+});
+
+it('uses the configured width for absent or invalid anchor widths', () => {
+  for (const width of [undefined, NaN, -10, 0]) {
+    const [badge] = layoutBadges([{ id: 1, x: 380, y: 100, width }], [220, 20, 150, 200], { width: 390, height: 300 }, { badgeWidth: 180 });
+    expect(badge.side).toBe('left');
+    expect(badge.x).toBe(208);
+  }
 });
 
 it.each([{ width: 0, height: 100 }, { width: 100, height: 0 }, { width: Infinity, height: 100 }, { width: 100, height: NaN }, { width: -1, height: 10 }])('rejects invalid or zero-size frames %j', frame => {

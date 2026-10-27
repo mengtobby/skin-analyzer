@@ -4,8 +4,10 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { LiveView } from "./LiveView";
 import { drawFaceMesh, meshFromFace } from "../overlay/mesh";
 import { LABEL_INFO } from "../lib/blemishInfo";
+import * as badgeLayout from "../lib/badgeLayout";
+import { BlemishMap } from "../flow/BlemishMap";
 vi.mock("../overlay/mesh", async importOriginal => ({ ...await importOriginal<typeof import("../overlay/mesh")>(), drawFaceMesh: vi.fn() }));
-import { frameFixture } from "../protocol/fixtures";
+import { frameFixture, reportFixture } from "../protocol/fixtures";
 
 beforeEach(() => {
   vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
@@ -153,6 +155,54 @@ it('exposes the canvas as a named image and hides duplicate overlay guidance', (
   expect(screen.getByRole('img', { name: 'Live camera with skin detection overlays' })).toBeVisible();
   expect(screen.getByText(/No face detected/)).toHaveAttribute('aria-hidden', 'true');
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
+});
+
+it('feeds measured badge dimensions to layout in image pixels and updates on resize', () => {
+  let badgeWidth = 150;
+  let resized: ResizeObserverCallback = () => undefined;
+  const disconnect = vi.fn();
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback: ResizeObserverCallback) { resized = callback; }
+    observe() { /* Measurements are triggered explicitly below. */ }
+    disconnect = disconnect;
+  });
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const width = this.classList.contains('live-badges') ? 640 : this.classList.contains('ui-floating-badge') ? badgeWidth : 0;
+    return { width, height: this.classList.contains('live-badges') ? 360 : 50, x: 0, y: 0, top: 0, left: 0, right: width, bottom: 0, toJSON: () => ({}) };
+  });
+  const layout = vi.spyOn(badgeLayout, 'layoutBadges');
+  const { container, unmount } = render(<LiveView bitmapRef={{ current: null }} headerRef={{ current: frameFixture }} header={frameFixture} connection="connected" sendReset={vi.fn()} />);
+  expect(layout.mock.calls[0][0][0].width).toBeGreaterThan(0);
+  expect(layout).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ width: 300 })]), frameFixture.face!.bbox, frameFixture, { badgeHeight: 100, margin: 16 });
+  expect(container.querySelector<HTMLElement>('.ui-floating-badge')!.style.maxWidth).toBe('624px');
+  badgeWidth = 190;
+  act(() => resized([], {} as ResizeObserver));
+  expect(layout).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ width: 380 })]), frameFixture.face!.bbox, frameFixture, { badgeHeight: 100, margin: 16 });
+  unmount();
+  expect(disconnect).toHaveBeenCalled();
+});
+
+it.each([0, 1440])('keeps the measured selected-area badge inside the results frame at y=%s', y => {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const width = this.classList.contains('blemish-map') ? 390 : 230;
+    const height = this.classList.contains('blemish-map') ? 720 : 60;
+    return { width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, toJSON: () => ({}) };
+  });
+  const header = { ...frameFixture, width: 780, height: 1440,
+    face: { bbox: [400, 20, 350, 1300] as [number, number, number, number], zones: [] },
+    tracks: [{ ...frameFixture.tracks[0], bbox: [730, y - 10, 20, 20] as [number, number, number, number] }],
+  };
+  const snapshot = { image: document.createElement('canvas'), width: 780, height: 1440, header, report: reportFixture, capturedAt: 1 };
+  const { container } = render(<BlemishMap snapshot={snapshot} selected={7} onSelect={vi.fn()} detailId="detail" />);
+  const badge = container.querySelector<HTMLElement>('.selected-area-badge')!;
+  const left = Number.parseFloat(badge.style.left) / 100 * 390;
+  const top = Number.parseFloat(badge.style.top) / 100 * 720;
+  expect(badge).toHaveClass('ui-floating-badge--right');
+  expect(left).toBeGreaterThanOrEqual(8);
+  expect(left + 230).toBeLessThanOrEqual(382);
+  expect(top - 30).toBeGreaterThanOrEqual(8);
+  expect(top + 30).toBeLessThanOrEqual(712);
 });
 
 it.each([false, true])('sweeps mesh tint and respects reduced motion (%s)', reducedMotion => {
