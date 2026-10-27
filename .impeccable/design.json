@@ -1,0 +1,550 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-27T03:30:56.258Z",
+  "title": "Design System: Skin Analyzer",
+  "extensions": {
+    "colorMeta": {
+      "sage-mist": {
+        "role": "neutral",
+        "displayName": "Sage Mist",
+        "canonical": "#e8edea",
+        "oklch": "oklch(94.1% 0.007 160.1)",
+        "tonalRamp": [
+          "#090c0a",
+          "#212523",
+          "#3d413e",
+          "#5b5f5c",
+          "#7d817f",
+          "#a1a6a3",
+          "#c7ccc9",
+          "#ebf0ed"
+        ]
+      },
+      "sage-deep": {
+        "role": "tertiary",
+        "displayName": "Sage Deep",
+        "canonical": "#52665c",
+        "oklch": "oklch(49.1% 0.029 163.5)",
+        "tonalRamp": [
+          "#010f08",
+          "#162820",
+          "#32453b",
+          "#4f6359",
+          "#71867b",
+          "#95aba0",
+          "#bad1c5",
+          "#def5e9"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Mist Surface",
+        "canonical": "#f7f9f7",
+        "oklch": "oklch(98.0% 0.003 145.5)",
+        "tonalRamp": [
+          "#0a0c0a",
+          "#232423",
+          "#3f403f",
+          "#5c5e5c",
+          "#7f817f",
+          "#a3a5a3",
+          "#c9cbc9",
+          "#edefed"
+        ]
+      },
+      "surface-glass": {
+        "role": "neutral",
+        "displayName": "Frosted Glass",
+        "canonical": "rgb(255 255 255 / 72%)",
+        "note": "Always paired with backdrop-filter: blur(24px) saturate(1.2); solid surface fallback."
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d4ddd6",
+        "oklch": "oklch(88.9% 0.014 152.6)",
+        "tonalRamp": [
+          "#070d08",
+          "#1f2621",
+          "#3b423c",
+          "#58605a",
+          "#7a837c",
+          "#9fa7a1",
+          "#c4cdc6",
+          "#e8f1ea"
+        ]
+      },
+      "control-border": {
+        "role": "neutral",
+        "displayName": "Control Edge",
+        "canonical": "#758278",
+        "oklch": "oklch(59.3% 0.021 152.5)",
+        "tonalRamp": [
+          "#050e07",
+          "#1c271f",
+          "#37433a",
+          "#556158",
+          "#77847a",
+          "#9ba99e",
+          "#c1cfc4",
+          "#e4f3e8"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "#141815",
+        "oklch": "oklch(20.4% 0.008 153.1)",
+        "tonalRamp": [
+          "#090c09",
+          "#212522",
+          "#3c413e",
+          "#5a5f5b",
+          "#7d827e",
+          "#a1a6a2",
+          "#c7ccc8",
+          "#eaf0ec"
+        ]
+      },
+      "ink-hover": {
+        "role": "primary",
+        "displayName": "Ink Lift",
+        "canonical": "#303c33",
+        "oklch": "oklch(34.2% 0.022 152.7)",
+        "tonalRamp": [
+          "#050e07",
+          "#1c271f",
+          "#37433a",
+          "#556158",
+          "#77847a",
+          "#9ba99e",
+          "#c0cfc4",
+          "#e4f3e7"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Sage",
+        "canonical": "#536057",
+        "oklch": "oklch(47.5% 0.022 155.3)",
+        "tonalRamp": [
+          "#040e07",
+          "#1c2720",
+          "#37433b",
+          "#546158",
+          "#77847b",
+          "#9ba99f",
+          "#c0cfc5",
+          "#e4f3e8"
+        ]
+      },
+      "accent": {
+        "role": "tertiary",
+        "displayName": "Terracotta",
+        "canonical": "#b95729",
+        "oklch": "oklch(57.1% 0.140 43.6)",
+        "tonalRamp": [
+          "#190400",
+          "#401501",
+          "#6a2907",
+          "#9b3b02",
+          "#c36033",
+          "#ec8558",
+          "#feb89a",
+          "#ffe9e1"
+        ]
+      },
+      "accent-text": {
+        "role": "tertiary",
+        "displayName": "Terracotta Text",
+        "canonical": "#9c4520",
+        "oklch": "oklch(49.8% 0.126 41.8)",
+        "tonalRamp": [
+          "#1a0400",
+          "#401402",
+          "#6a280a",
+          "#96401a",
+          "#be633f",
+          "#e68863",
+          "#ffb79b",
+          "#ffe9e1"
+        ]
+      },
+      "peach": {
+        "role": "secondary",
+        "displayName": "Peach",
+        "canonical": "#f4b08c",
+        "oklch": "oklch(81.3% 0.094 48.9)",
+        "tonalRamp": [
+          "#180500",
+          "#3d1801",
+          "#662d07",
+          "#874c2a",
+          "#ad6f4c",
+          "#d59370",
+          "#fdb994",
+          "#feeadf"
+        ]
+      },
+      "apricot": {
+        "role": "secondary",
+        "displayName": "Apricot",
+        "canonical": "#e8935f",
+        "oklch": "oklch(74.0% 0.123 51.3)",
+        "tonalRamp": [
+          "#170600",
+          "#3c1901",
+          "#642f08",
+          "#924503",
+          "#b96833",
+          "#e18d59",
+          "#faba95",
+          "#ffeade"
+        ]
+      },
+      "ring-track": {
+        "role": "secondary",
+        "displayName": "Ring Track",
+        "canonical": "#f3dfd2",
+        "oklch": "oklch(91.6% 0.028 55.3)",
+        "tonalRamp": [
+          "#140802",
+          "#2f2017",
+          "#4c3c32",
+          "#6b5a4f",
+          "#8e7c70",
+          "#b3a094",
+          "#dac6b9",
+          "#feeadd"
+        ]
+      },
+      "success": {
+        "role": "neutral",
+        "displayName": "Leaf Success",
+        "canonical": "#286343",
+        "oklch": "oklch(45.1% 0.081 157.0)",
+        "tonalRamp": [
+          "#000f06",
+          "#022c18",
+          "#0c4c2e",
+          "#316b4b",
+          "#558f6d",
+          "#79b490",
+          "#9edbb5",
+          "#c7fedb"
+        ]
+      },
+      "success-soft": {
+        "role": "neutral",
+        "displayName": "Leaf Wash",
+        "canonical": "#e1eee4",
+        "oklch": "oklch(93.7% 0.019 152.8)",
+        "tonalRamp": [
+          "#050e07",
+          "#1d2720",
+          "#38433b",
+          "#566158",
+          "#78847b",
+          "#9ca89f",
+          "#c2cec5",
+          "#e5f2e8"
+        ]
+      },
+      "warning": {
+        "role": "neutral",
+        "displayName": "Amber Warning",
+        "canonical": "#795015",
+        "oklch": "oklch(46.6% 0.090 71.1)",
+        "tonalRamp": [
+          "#130900",
+          "#341f02",
+          "#58380a",
+          "#7d541a",
+          "#a27740",
+          "#c89b64",
+          "#f0c189",
+          "#feebd6"
+        ]
+      },
+      "warning-soft": {
+        "role": "neutral",
+        "displayName": "Amber Wash",
+        "canonical": "#f6e8cf",
+        "oklch": "oklch(93.6% 0.036 82.2)",
+        "tonalRamp": [
+          "#110a00",
+          "#2d220e",
+          "#493e29",
+          "#685c46",
+          "#8b7f68",
+          "#b0a38b",
+          "#d6c9b0",
+          "#fbedd4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Start hero headline only, with the inline peach scan pill."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page h1 on Camera and Settings; Results and Treatments use clamp(1.8rem, 3vw, 2.5rem)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Paragraphs and lists, 75ch max, tabular figures."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Nav, floating badges, chips, stepper labels; sentence case."
+      },
+      "score": {
+        "displayName": "Score",
+        "purpose": "Visible gauge value with a muted \"/ 100\"."
+      }
+    },
+    "dataMarkerHues": {
+      "papule": "#ff4d6d",
+      "pustule": "#ffb703",
+      "red_mark": "#f28482",
+      "diffuse_redness": "#e85d75",
+      "hyperpigmentation": "#b08968",
+      "texture_irregularity": "#8ecae6",
+      "fine_lines": "#cdb4db",
+      "comedone": "#adb5bd",
+      "nodule": "#d00000",
+      "source": "frontend/src/overlay/draw.ts LABEL_COLORS; data encoding only"
+    },
+    "meshStyle": {
+      "stroke": "rgba(255,255,255,0.75) 1px, dash 3 4 (canvas, results); 0.65 opacity dash 2 5 (Start)",
+      "vertex": "3px dot; white 90% on captures, peach on Start; landmarks #ffd2b7",
+      "sweepVertex": "#f4b08c with 8px rgba(244,176,140,0.4) glow",
+      "sweepBand": "36px linear band rgba(244,176,140,0 / 0.3 / 0)",
+      "startCardSurface": "radial-gradient(ellipse at 48% 38%, #6c8073 0%, #52665c 72%)"
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 18px 40px -20px rgb(31 48 40 / 28%)",
+        "purpose": "Every card, the header pill, results map, list rows, recommendation row, routine headers."
+      },
+      {
+        "name": "float",
+        "value": "0 12px 30px -12px rgb(31 48 40 / 35%)",
+        "purpose": "Floating badges and the phone bottom nav."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px rgb(185 87 41 / 30%)",
+        "purpose": "Paired with a 2px ink outline at 3px offset on :focus-visible."
+      },
+      {
+        "name": "glass-blur",
+        "value": "backdrop-filter: blur(24px) saturate(1.2)",
+        "purpose": "Every frosted surface, inside @supports (backdrop-filter)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "gauge-reveal",
+        "value": "1.2s cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Score ring arc draws from 0 on mount; off under reduced motion."
+      },
+      {
+        "name": "stepper-progress",
+        "value": "width 300ms ease-out",
+        "purpose": "Stepper segment fill; off under reduced motion."
+      },
+      {
+        "name": "marker-pulse",
+        "value": "2.5s ease-out, 2 iterations",
+        "purpose": "Results marker ring pulse on arrival; static 60% ring under reduced motion."
+      },
+      {
+        "name": "scan-sweep",
+        "value": "3s linear sweep down the face box",
+        "purpose": "Vertices above the line turn peach with an 8px glow; a 36px peach band (0-30%-0) travels with it. Band omitted under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "540",
+        "value": "540px"
+      },
+      {
+        "name": "600",
+        "value": "600px"
+      },
+      {
+        "name": "640",
+        "value": "640px"
+      },
+      {
+        "name": "800",
+        "value": "800px"
+      },
+      {
+        "name": "850",
+        "value": "850px"
+      },
+      {
+        "name": "900",
+        "value": "900px"
+      },
+      {
+        "name": "1220",
+        "value": "1220px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "CTA Button",
+      "kind": "button",
+      "refersTo": "button-cta",
+      "description": "Ink pill with round arrow disc; the single forward step on a view.",
+      "html": "<button class=\"ds-btn-cta\">Start analyzing<span class=\"ds-btn-cta__arrow\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14m-6-6 6 6-6 6\"/></svg></span></button>",
+      "css": ".ds-btn-cta { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 6px 6px 6px 24px; font-size: 16px; font-weight: 600; color: #fff; background: var(--ink, #141815); border: 1px solid var(--ink, #141815); border-radius: 999px; cursor: pointer; } .ds-btn-cta:hover { background: var(--ink-hover, #303c33); border-color: var(--ink-hover, #303c33); } .ds-btn-cta:focus-visible { outline: 2px solid #141815; outline-offset: 3px; box-shadow: 0 0 0 3px rgb(185 87 41 / 30%); } .ds-btn-cta__arrow { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--ink-hover, #303c33); }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ink pill for committed actions.",
+      "html": "<button class=\"ds-btn-primary\">Apply</button>",
+      "css": ".ds-btn-primary { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; min-height: 44px; padding: 11px 22px; font-weight: 600; color: #fff; background: #141815; border: 1px solid #141815; border-radius: 999px; cursor: pointer; } .ds-btn-primary:hover { background: #303c33; border-color: #303c33; } .ds-btn-primary:focus-visible { outline: 2px solid #141815; outline-offset: 3px; box-shadow: 0 0 0 3px rgb(185 87 41 / 30%); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Frosted glass pill for going back or alternates.",
+      "html": "<button class=\"ds-btn-secondary\">Retake</button>",
+      "css": ".ds-btn-secondary { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; min-height: 44px; padding: 11px 22px; font-weight: 600; color: #141815; background: rgb(255 255 255 / 72%); backdrop-filter: blur(24px) saturate(1.2); border: 1px solid #d4ddd6; border-radius: 999px; cursor: pointer; } .ds-btn-secondary:hover { background: #e8edea; border-color: #536057; } .ds-btn-secondary:focus-visible { outline: 2px solid #141815; outline-offset: 3px; box-shadow: 0 0 0 3px rgb(185 87 41 / 30%); }"
+    },
+    {
+      "name": "Filter Chips",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "aria-pressed toggles; pressed is ink.",
+      "html": "<div class=\"ds-chips\" role=\"group\" aria-label=\"Filter areas\"><button class=\"ds-chip\" aria-pressed=\"true\">All</button><button class=\"ds-chip\" aria-pressed=\"false\">Papules</button><button class=\"ds-chip\" aria-pressed=\"false\">Dark marks</button></div>",
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 8px; } .ds-chip { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; min-height: 44px; padding: 9px 18px; font-size: 16px; font-weight: 600; color: #141815; background: rgb(255 255 255 / 72%); border: 1px solid #758278; border-radius: 999px; cursor: pointer; } .ds-chip:hover { border-color: #141815; } .ds-chip[aria-pressed='true'] { color: #fff; background: #141815; border-color: #141815; } .ds-chip:focus-visible { outline: 2px solid #141815; outline-offset: 3px; box-shadow: 0 0 0 3px rgb(185 87 41 / 30%); }"
+    },
+    {
+      "name": "Frosted Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "28px glass card with soft offset shadow; never nested.",
+      "html": "<section class=\"ds-card\"><h2>Let's get a clear view</h2><p>Face found. Keep looking straight ahead.</p></section>",
+      "css": ".ds-card { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; padding: 28px; color: #141815; background: rgb(255 255 255 / 72%); backdrop-filter: blur(24px) saturate(1.2); border: 1px solid rgb(255 255 255 / 85%); border-radius: 28px; box-shadow: 0 18px 40px -20px rgb(31 48 40 / 28%); } .ds-card h2 { margin: 0 0 12px; font-size: 24px; font-weight: 600; letter-spacing: -.02em; } .ds-card p { margin: 0; color: #536057; line-height: 1.65; }"
+    },
+    {
+      "name": "Floating Badge",
+      "kind": "custom",
+      "refersTo": "floating-badge",
+      "description": "Ink pill with peach glyph, beside the face, joined by a leader line to a peach anchor dot.",
+      "html": "<div class=\"ds-fb-stage\"><svg class=\"ds-fb-leader\" viewBox=\"0 0 260 80\"><line x1=\"150\" y1=\"40\" x2=\"220\" y2=\"40\"/><circle cx=\"220\" cy=\"40\" r=\"3\"/></svg><span class=\"ds-fb\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 3H4a1 1 0 0 0-1 1v4m13-5h4a1 1 0 0 1 1 1v4M3 16v4a1 1 0 0 0 1 1h4m8 0h4a1 1 0 0 0 1-1v-4M8 8v3m8-3v3m-7 5c2 2 4 2 6 0m-3-6v3h-1\"/></svg>Papules 1</span></div>",
+      "css": ".ds-fb-stage { position: relative; width: 260px; height: 80px; background: #52665c; border-radius: 20px; } .ds-fb-leader { position: absolute; inset: 0; width: 100%; height: 100%; } .ds-fb-leader line { stroke: rgba(255,255,255,.7); stroke-width: 1; } .ds-fb-leader circle { fill: #f4b08c; } .ds-fb { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; position: absolute; left: 150px; top: 40px; transform: translate(-100%, -50%); display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; white-space: nowrap; font-size: 14px; font-weight: 600; color: #fff; background: #141815; border-radius: 999px; box-shadow: 0 12px 30px -12px rgb(31 48 40 / 35%); } .ds-fb svg { color: #f4b08c; flex-shrink: 0; }"
+    },
+    {
+      "name": "Score Ring",
+      "kind": "custom",
+      "refersTo": "score",
+      "description": "Decorative apricot arc on a peach track; the value is visible text.",
+      "html": "<div class=\"ds-score\"><svg class=\"ds-ring\" width=\"112\" height=\"112\" viewBox=\"0 0 100 100\" aria-hidden=\"true\"><circle class=\"ds-ring__track\" cx=\"50\" cy=\"50\" r=\"42\"/><circle class=\"ds-ring__arc\" cx=\"50\" cy=\"50\" r=\"42\" pathLength=\"100\" stroke-dasharray=\"46 100\" transform=\"rotate(-90 50 50)\"/></svg><h3>Redness</h3><p class=\"ds-score__value\">46<span> / 100</span></p></div>",
+      "css": ".ds-score { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; text-align: center; color: #141815; } .ds-ring circle { fill: none; stroke-width: 6; } .ds-ring__track { stroke: #f3dfd2; } .ds-ring__arc { stroke: #e8935f; stroke-linecap: round; animation: ds-reveal 1.2s cubic-bezier(.16,1,.3,1) both; } @keyframes ds-reveal { from { stroke-dasharray: 0 100; } } @media (prefers-reduced-motion: reduce) { .ds-ring__arc { animation: none; } } .ds-score h3 { margin: 12px 0 0; font-size: 17px; font-weight: 600; } .ds-score__value { margin: 8px 0; font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; } .ds-score__value span { font-size: .875rem; font-weight: 400; color: #536057; }"
+    },
+    {
+      "name": "Navigation Pill",
+      "kind": "nav",
+      "refersTo": "nav-link-active",
+      "description": "Frosted header pill; active link is ink. On phones it becomes a floating bottom pill of 48px icon targets.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main navigation\"><a class=\"ds-nav__wordmark\" href=\"#\"><span>skin</span>analyzer</a><a class=\"ds-nav__link\" aria-current=\"page\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 3H4a1 1 0 0 0-1 1v4m13-5h4a1 1 0 0 1 1 1v4M3 16v4a1 1 0 0 0 1 1h4m8 0h4a1 1 0 0 0 1-1v-4M8 8v3m8-3v3m-7 5c2 2 4 2 6 0m-3-6v3h-1\"/></svg>Analyze</a><a class=\"ds-nav__link\" href=\"#\">Settings</a></nav>",
+      "css": ".ds-nav { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; gap: 8px; padding: 16px 24px; background: rgb(255 255 255 / 72%); backdrop-filter: blur(24px) saturate(1.2); border: 1px solid rgb(255 255 255 / 85%); border-radius: 999px; box-shadow: 0 18px 40px -20px rgb(31 48 40 / 28%); } .ds-nav__wordmark { margin-right: 24px; font-size: 25px; font-weight: 650; letter-spacing: -.035em; color: #141815; text-decoration: none; } .ds-nav__wordmark span { color: #b95729; } .ds-nav__link { display: inline-flex; align-items: center; gap: 9px; min-height: 48px; padding: 11px 16px; font-size: 14px; font-weight: 600; color: #536057; text-decoration: none; border-radius: 999px; } .ds-nav__link:hover { background: #e8edea; color: #141815; } .ds-nav__link[aria-current='page'] { color: #fff; background: #141815; } .ds-nav__link:focus-visible { outline: 2px solid #141815; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Surface field with control-edge border and terracotta caret.",
+      "html": "<label class=\"ds-field\"><span>Stream address</span><input type=\"url\" placeholder=\"http://192.168.1.20:8080/video\"></label>",
+      "css": ".ds-field { font-family: 'Urbanist Variable', 'Segoe UI', system-ui, sans-serif; display: grid; gap: 8px; font-weight: 600; color: #141815; } .ds-field input { font: inherit; font-weight: 400; padding: 12px 16px; color: #141815; background: #f7f9f7; border: 1px solid #758278; border-radius: 12px; caret-color: #b95729; } .ds-field input::placeholder { color: #536057; } .ds-field input:focus-visible { outline: 2px solid #141815; outline-offset: 3px; box-shadow: 0 0 0 4px #f4b08c; } .ds-field input[aria-invalid='true'] { border-color: #9c4520; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Scanner",
+    "overview": "The scan is the brand. One dotted face-mesh grammar, built from the facial zones the backend actually measured, runs from the Start hero through the live camera to the captured results. Everything else is a calm frame around it: a sage-mist ground, frosted cards with generous 28px rounding and a soft offset shadow, black ink pills with round arrow buttons, peach fills and apricot donut rings, and dark floating badges with peach glyphs that sit beside the face and point at what they name. Urbanist, self-hosted, sets every word.\n\nThe mood is a private, unhurried check-in rather than a clinic or a beauty ad. Density is low: one primary action per view, wide gutters, short plain sentences in the product's fixed wording. Colour is restrained to a cool sage neutral world with a single warm family (peach, apricot, terracotta) that marks the scanner's attention. Ink black carries every committed action.\n\nImagery is only ever the user's own capture or the mesh drawn from it. There is no stock photography, no product shots and no illustrative people, and nothing on screen claims a number the report did not produce.",
+    "keyCharacteristics": [
+      "Dotted white mesh with peach vertices as the single recurring signature, derived from real zone polygons.",
+      "Sage-mist ground, frosted white glass cards (72% white, 24px blur), soft sage-tinted offset shadows.",
+      "Ink pills for actions; the CTA pill carries a round darker arrow disc.",
+      "Peach is fill and glyph; apricot is the decorative gauge arc; terracotta is text-safe accent.",
+      "Dark pill badges with peach icons placed beside the face, joined to their anchor by a thin leader line.",
+      "Phone: floating frosted bottom nav pill of 48px icon targets."
+    ],
+    "rules": [
+      {
+        "name": "The Ink Commits Rule",
+        "body": "Every committed action and every selected state is ink with white text. Peach and apricot never fill a button.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Terracottas Rule",
+        "body": "Text in the accent hue uses `accent-text`; `accent` is reserved for 18.7px-bold-and-larger type, icons and marks. Any new accent text must clear 4.5:1 against both sage-mist and surface.",
+        "section": "colors"
+      },
+      {
+        "name": "The Warm Means Attention Rule",
+        "body": "The warm family appears where the scanner is looking or measuring: mesh vertices, sweep, gauges, badge glyphs, the scan pill. It does not decorate chrome.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Face Rule",
+        "body": "Urbanist is the only typeface. Do not add a serif, a mono, or a system display face for numbers; use tabular figures instead.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Headings, labels and chips are sentence case in the product's own wording. No small-caps kickers above headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Frost Fallback Rule",
+        "body": "Any glass surface declares its solid `surface` fill first and switches to `surface-glass` plus `blur(24px) saturate(1.2)` only inside `@supports (backdrop-filter)`.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Level Rule",
+        "body": "A card never sits inside a card. Inside a card, grouping uses hairline rules, spacing, or a single tinted callout without shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do build every new surface from the sage-mist ground, frosted 28px cards with Card rest shadow, and ink pill actions.",
+      "Do derive any face graphic from zone polygons through `meshFromZones` / `meshFromFace` and draw it with `drawFaceMesh` or the same dashed-white-and-dot styling.",
+      "Do place floating badges with `layoutBadges`, beside the face, joined by a leader line, on one line, with markers passed as obstacles.",
+      "Do print every score as visible text; the apricot arc only decorates it.",
+      "Do use the CTA pill with its arrow disc for the single forward step on a view, and secondary glass pills for going back.",
+      "Do keep 44px minimum targets (48px in navigation), `aria-pressed` on toggles, labelled icon-only buttons and live-region announcements for selection changes.",
+      "Do honour `prefers-reduced-motion`: the global rule stops animations and transitions; gauge reveal (1.2s, cubic-bezier(.16, 1, .3, 1)), marker pulse (2.5s, twice), stepper width (300ms ease-out) and the sweep band all switch off.",
+      "Do keep the privacy line and the cosmetic disclaimer visible where they are, and keep the product's existing wording."
+    ],
+    "donts": [
+      "Don't nest a card inside a card; use rules, spacing or the single tinted callout.",
+      "Don't put small uppercase eyebrow labels or kickers above headings.",
+      "Don't use gradient-filled text; the only gradients are the page bloom, the deep-sage card glow and the sweep band.",
+      "Don't use stock photography, people, product shots or illustrative faces other than the zone-derived mesh.",
+      "Don't show a number, badge, gauge or marker that does not come from the capture's report; empty data shows an em dash.",
+      "Don't let a floating badge sit on the face, cover a marker, wrap to two lines, or float without a leader to its anchor.",
+      "Don't set accent-hue text in `accent` at body size, or any information in apricot or peach on a light surface.",
+      "Don't fill buttons or chips with peach or apricot; selection is ink.",
+      "Don't load fonts or assets from a CDN; the app must work offline under a strict CSP."
+    ]
+  }
+}
