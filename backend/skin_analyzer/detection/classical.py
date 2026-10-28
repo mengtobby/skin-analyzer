@@ -5,7 +5,8 @@ an absolute colour, so it adapts to skin tone and lighting:
 
 * inflammation  -> a* (red-green) above a masked local baseline
 * pustule head  -> bright, yellow-shifted core (L*, b*) inside an inflamed lesion
-* pigmentation  -> L* below baseline without elevated a*
+* pigmentation  -> L* below baseline without elevated a* (on the nose, also below the
+                   median along the nose, so side shadows and ridge highlights cancel)
 * texture       -> high-pass L* energy relative to the face median
 * fine lines    -> Hessian ridge response (dark, thin, elongated valleys)
 
@@ -18,6 +19,7 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 
 from ..domain import ZONE_IDS, Detection, DetectionClass, FaceZone
 from .base import MM_PER_UNIT, DetectorInput, component_to_detection
@@ -49,6 +51,10 @@ class ClassicalParams:
     lesion_diam_units: tuple[float, float] = (0.02, 0.10)
     patch_diam_units: tuple[float, float] = (0.12, 0.45)
     pigment_diam_units: tuple[float, float] = (0.03, 0.20)
+    # Half window of the along-nose median baseline. Measured live under one-sided room
+    # light: removed every nose false positive (0.42 -> 0/frame) and raised recall for
+    # injected -10 L* spots on the nose from 45% to 79%; wider windows let shadows back in.
+    nose_baseline_units: float = 0.15
     texture_ratio: float = 5.0
     texture_min_diam_units: float = 0.18
     ridge_k: float = 8.0
@@ -101,6 +107,29 @@ def hysteresis(strong: np.ndarray, weak: np.ndarray) -> np.ndarray:
     return seeded[labels]
 
 
+def vertical_median_residual(light: np.ndarray, mask: np.ndarray, half_window: int) -> np.ndarray:
+    """``light`` minus the median of masked pixels in the same column within +-half_window rows.
+
+    Shading that runs the length of a vertical structure (the nose under side light, or
+    its lit ridge) cancels, while spots shorter than the window stay dark. Pixels outside
+    ``mask`` get zero.
+    """
+    out = np.zeros(light.shape, np.float32)
+    rows, cols = np.flatnonzero(mask.any(axis=1)), np.flatnonzero(mask.any(axis=0))
+    if rows.size == 0:
+        return out
+    box = (slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1))
+    inside = mask[box]
+    crop = np.where(inside, light[box], np.nan).astype(np.float32)
+    padded = np.pad(crop, ((half_window, half_window), (0, 0)), constant_values=np.nan)
+    windows = np.sort(sliding_window_view(padded, 2 * half_window + 1, axis=0), axis=2)  # NaN last
+    count = np.count_nonzero(~np.isnan(windows), axis=2)
+    lower = np.take_along_axis(windows, ((count - 1) // 2)[..., None], axis=2)[..., 0]
+    upper = np.take_along_axis(windows, (count // 2)[..., None], axis=2)[..., 0]
+    out[box] = np.where(inside, crop - (lower + upper) / 2, 0.0)
+    return out
+
+
 def _diameter_units(area_px: float, ppu: float) -> float:
     return 2.0 * np.sqrt(area_px / np.pi) / ppu
 
@@ -132,8 +161,13 @@ class ClassicalDetector:
         sig_a = _robust_sigma(da[core])
         sig_l = _robust_sigma(dL[core])
 
-        ctx = _Ctx(inp, ppu, core, dL, da, db, sig_a, sig_l)
         on = self.p.enabled
+        dL_pigment = None
+        if DetectionClass.HYPERPIGMENTATION in on:
+            nose = inp.zone_map == ZONE_IDS[FaceZone.NOSE]
+            half = max(1, int(round(self.p.nose_baseline_units * ppu)))
+            dL_pigment = np.where(nose, vertical_median_residual(L, nose, half), dL)
+        ctx = _Ctx(inp, ppu, core, dL, da, db, sig_a, sig_l, dL_pigment)
         found: list[Detection] = []
         if on & {DetectionClass.PAPULE, DetectionClass.PUSTULE, DetectionClass.RED_MARK}:
             found += self._inflammatory(ctx)
@@ -258,15 +292,16 @@ class ClassicalDetector:
         p = self.p
         thr = max(p.dark_floor, p.dark_k * ctx.sig_l)
         red_thr = max(p.red_floor, p.red_k * ctx.sig_a)
+        dL = ctx.dL if ctx.dL_pigment is None else ctx.dL_pigment
         brownish = (ctx.da < 0.6 * red_thr) & (ctx.db > -1.0) & ctx.core
-        strong = (ctx.dL < -thr) & brownish
-        weak = (ctx.dL < -p.hysteresis_ratio * thr) & brownish
+        strong = (dL < -thr) & brownish
+        weak = (dL < -p.hysteresis_ratio * thr) & brownish
         mask = cv2.morphologyEx(
             hysteresis(strong, weak).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)
         )
         out = []
         floor = p.hysteresis_ratio * thr
-        for comp, sl, off, d in self._half_max_components(mask, -ctx.dL, floor, thr,
+        for comp, sl, off, d in self._half_max_components(mask, -dL, floor, thr,
                                                           p.pigment_diam_units, ctx.ppu):
             contours, _ = cv2.findContours(comp.astype(np.uint8), cv2.RETR_EXTERNAL,
                                            cv2.CHAIN_APPROX_NONE)
@@ -275,7 +310,7 @@ class ClassicalDetector:
             circularity = 4 * np.pi * cv2.contourArea(c) / max(perim * perim, 1e-6)
             if circularity < 0.35:
                 continue  # elongated dark edges are usually shadows, not spots
-            depth = float(-ctx.dL[sl][comp].min())
+            depth = float(-dL[sl][comp].min())
             feats = {"delta_l": -depth, "diameter_mm": d * MM_PER_UNIT,
                      "circularity": float(circularity)}
             det = self._emit(ctx, comp, sl, off, DetectionClass.HYPERPIGMENTATION,
@@ -351,3 +386,4 @@ class _Ctx:
     db: np.ndarray
     sig_a: float
     sig_l: float
+    dL_pigment: np.ndarray | None = None  # dL with the along-nose baseline on the nose

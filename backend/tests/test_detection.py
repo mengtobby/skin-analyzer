@@ -269,3 +269,78 @@ def test_diagonal_core_chains_keep_each_peaks_full_half_maximum(monkeypatch, fou
         assert comp.sum() == 18
         assert peak == pytest.approx(24.0 if peak > 20 else 10.0)
         assert diameter == pytest.approx(2 * np.sqrt(18 / np.pi) / 160)
+
+
+def _nose_canvas(seed=7):
+    """Synthetic input plus canonical (u, v) grids and the nose mask on its canvas."""
+    from skin_analyzer.domain import ZONE_IDS
+    from skin_analyzer.face.landmark_spec import NOSE_TIP
+
+    inp = _input(render_face(LANDMARKS, seed=seed))
+    canvas = inp.region.canvas
+    h, w = inp.zone_map.shape
+    yy, xx = np.mgrid[0:h, 0:w]
+    uu, vv = canvas.canvas_to_canonical(np.column_stack([xx.ravel(), yy.ravel()])).T.reshape(2, h, w)
+    nose_u = inp.region.frame.to_canonical(inp.region.landmarks)[NOSE_TIP][0]
+    return inp, uu - nose_u, vv, inp.zone_map == ZONE_IDS[FaceZone.NOSE]
+
+
+def _pigment(inp, lab):
+    from dataclasses import replace as dc_replace
+
+    dets = ClassicalDetector().detect(dc_replace(inp, canvas_lab=lab.astype(np.float32)))
+    return [d for d in dets if d.label is DetectionClass.HYPERPIGMENTATION]
+
+
+def test_side_lit_nose_shading_is_not_pigment():
+    # Light from one side darkens the far half of the nose along its whole length (live:
+    # 17 L* below the lit side); skin texture (sigma ~2 L*) breaks that shadow into round
+    # fragments that the face-wide local baseline reported as spots on 6 of 12 seeds.
+    import cv2
+
+    inp, du, _, nose = _nose_canvas()
+    for seed in range(12):
+        rng = np.random.default_rng(seed)
+        texture = cv2.GaussianBlur(rng.normal(0, 1, nose.shape).astype(np.float32), (0, 0), 3)
+        texture /= texture.std()
+        lab = inp.canvas_lab.copy()
+        lab[..., 0] -= np.where(nose, np.clip(du / 0.08, 0, 1) * 12.0 - 2.0 * texture, 0)
+        assert not [d for d in _pigment(inp, lab) if d.zone is FaceZone.NOSE], seed
+
+
+def test_detects_pigment_spot_on_highlighted_nose_ridge():
+    # A lit nose ridge is brighter than the nearby cheeks; a spot on it must be judged
+    # against the ridge, not against the face-wide local baseline.
+    inp, du, vv, nose = _nose_canvas()
+    lab = inp.canvas_lab.copy()
+    lab[..., 0] += np.where(nose, 6.0 * np.exp(-(du / 0.05) ** 2), 0)
+    sigma = 2.5 * (160 / 90) / 1.1774  # 2.5 mm half-maximum radius
+    spot = np.exp(-(du ** 2 + (vv - 0.25) ** 2) / (2 * (sigma / 160) ** 2))
+    lab[..., 0] -= 10.0 * spot
+    hits = [d for d in _pigment(inp, lab) if d.zone is FaceZone.NOSE]
+    assert len(hits) == 1 and 3 < hits[0].features["diameter_mm"] < 8
+
+
+def test_vertical_median_baseline_ignores_compact_spots_and_other_zones():
+    from skin_analyzer.detection.classical import vertical_median_residual
+
+    light = np.full((40, 6), 60.0, np.float32)
+    light[:, 3:] -= 12.0  # a shadowed column band along the whole length
+    light[18:22, 1] -= 9.0  # a compact dark spot
+    mask = np.zeros_like(light, bool)
+    mask[:, 1:5] = True
+    residual = vertical_median_residual(light, mask, half_window=10)
+    assert residual[20, 1] == pytest.approx(-9.0)
+    np.testing.assert_allclose(residual[:, 3:5], 0.0)
+    np.testing.assert_allclose(residual[~mask], 0.0)
+
+
+def test_vertical_median_baseline_even_count_and_empty_mask():
+    from skin_analyzer.detection.classical import vertical_median_residual
+
+    light = np.array([[10.0], [20.0], [30.0], [40.0]], np.float32)
+    mask = np.ones_like(light, bool)
+    residual = vertical_median_residual(light, mask, half_window=1)
+    # Edge windows hold two values (even count -> mean of both middles).
+    np.testing.assert_allclose(residual[:, 0], [-5.0, 0.0, 0.0, 5.0])
+    assert not vertical_median_residual(light, np.zeros_like(mask), 1).any()
