@@ -160,7 +160,7 @@ class PipelineRunner:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise SourceSwitchError(
-                        f"No frames received from {new_source.info().spec}; "
+                        f"No frames received from {_input_label(spec)}; "
                         "the previous input is still active")
                 if new_source.read(timeout=min(0.05, remaining)) is not None:
                     break
@@ -362,6 +362,12 @@ class PipelineRunner:
                 self._last_report = 0.0
                 self._condition.notify_all()
         self._notify_listeners()
+
+
+def _input_label(spec: str) -> str:
+    """User-facing input name that never echoes a stream URL (it may hold credentials)."""
+    kind, _, value = spec.partition(":")
+    return f"camera {value}" if kind == "camera" else "the stream address"
 
 
 def build_default_runner(settings: Settings) -> PipelineRunner:

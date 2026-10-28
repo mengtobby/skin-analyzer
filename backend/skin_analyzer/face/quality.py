@@ -14,7 +14,9 @@ from .landmark_spec import NOSE_TIP
 class QualityParams:
     min_brightness: float = 35.0
     max_brightness: float = 88.0
-    max_evenness: float = 14.0
+    max_evenness: float = 14.0  # left vs right cheek L*
+    # Forehead vs chin L*: overhead room light measured ~27 (p90 29) with cheeks within 14.
+    max_vertical_evenness: float = 32.0
     min_face_size_px: float = 80.0
     max_yaw_deg: float = 25.0
     max_pitch_deg: float = 22.0
@@ -47,14 +49,12 @@ class QualityReport:
     skin_coverage: float
 
 
-def _evenness(lab: np.ndarray, zones: np.ndarray, minimum: int) -> float:
-    differences = [0.0]
-    for first, second in ((FaceZone.LEFT_CHEEK, FaceZone.RIGHT_CHEEK),
-                          (FaceZone.FOREHEAD, FaceZone.CHIN)):
-        a, b = zones == ZONE_IDS[first], zones == ZONE_IDS[second]
-        if a.sum() >= minimum and b.sum() >= minimum:
-            differences.append(abs(float(np.median(lab[a, 0]) - np.median(lab[b, 0]))))
-    return max(differences)
+def _difference(lab: np.ndarray, zones: np.ndarray, minimum: int,
+                first: FaceZone, second: FaceZone) -> float:
+    a, b = zones == ZONE_IDS[first], zones == ZONE_IDS[second]
+    if a.sum() < minimum or b.sum() < minimum:
+        return 0.0
+    return abs(float(np.median(lab[a, 0]) - np.median(lab[b, 0])))
 
 
 def assess_quality(
@@ -80,22 +80,25 @@ def assess_quality(
     skin = (zone_map > 0) & (region.zone_map > 0)
     zones = np.where(skin, zone_map, 0)
     brightness = float(np.median(canvas_lab[skin, 0])) if skin.any() else 0.0
-    evenness = _evenness(canvas_lab, zones, p.min_zone_pixels)
+    lateral = _difference(canvas_lab, zones, p.min_zone_pixels,
+                          FaceZone.LEFT_CHEEK, FaceZone.RIGHT_CHEEK)
+    vertical = _difference(canvas_lab, zones, p.min_zone_pixels, FaceZone.FOREHEAD, FaceZone.CHIN)
     coverage = float(skin.sum() / max(1, np.count_nonzero(region.zone_map)))
     yaw = float(np.degrees(np.arcsin(np.clip(nose[0] / p.nose_yaw_scale, -1, 1))))
     pitch = float(np.degrees(np.arctan((nose[1] - p.frontal_nose_v) / p.nose_pitch_scale)))
     checks = (
         ("too_dark", brightness, p.min_brightness, True),
         ("too_bright", brightness, p.max_brightness, False),
-        ("uneven_light", evenness, p.max_evenness, False),
+        ("uneven_light", lateral, p.max_evenness, False),
+        ("uneven_light", vertical, p.max_vertical_evenness, False),
         ("too_far", float(region.frame.scale), p.min_face_size_px, True),
         ("turned_away", abs(yaw), p.max_yaw_deg, False),
         ("tilted", abs(pitch), p.max_pitch_deg, False),
         ("occluded", coverage, p.min_skin_coverage, True),
     )
-    issues = tuple(code for code, value, limit, lower in checks
-                   if (value < limit if lower else value > limit))
+    issues = tuple(dict.fromkeys(code for code, value, limit, lower in checks
+                                 if (value < limit if lower else value > limit)))
     margins = [np.clip(value / limit if lower else limit / max(value, limit), 0, 1)
                for _, value, limit, lower in checks]
     return QualityReport(not issues, float(np.prod(margins)), issues, brightness,
-                         evenness, float(region.frame.scale), yaw, pitch, coverage)
+                         max(lateral, vertical), float(region.frame.scale), yaw, pitch, coverage)

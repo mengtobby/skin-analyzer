@@ -41,15 +41,44 @@ def test_capture_issues(kwargs, issue):
     assert 0 <= report.score < 1
 
 
-@pytest.mark.parametrize("pair", [
-    (FaceZone.LEFT_CHEEK, FaceZone.RIGHT_CHEEK), (FaceZone.FOREHEAD, FaceZone.CHIN),
+@pytest.mark.parametrize("pair,low,high", [
+    ((FaceZone.LEFT_CHEEK, FaceZone.RIGHT_CHEEK), 55, 75),
+    ((FaceZone.FOREHEAD, FaceZone.CHIN), 40, 75),
 ])
-def test_uneven_light(pair):
+def test_uneven_light(pair, low, high):
     region, lab, zones = _capture()
-    lab[zones == ZONE_IDS[pair[0]], 0] = 55
-    lab[zones == ZONE_IDS[pair[1]], 0] = 75
+    lab[zones == ZONE_IDS[pair[0]], 0] = low
+    lab[zones == ZONE_IDS[pair[1]], 0] = high
     report = assess_quality(region, lab, zones)
-    assert report.evenness == 20 and "uneven_light" in report.issues
+    assert report.evenness == high - low and report.issues == ("uneven_light",)
+
+
+def test_overhead_light_gradient_passes():
+    # Live overhead room light measured forehead ~27 L* brighter than chin with cheeks within 14.
+    region, lab, zones = _capture()
+    lab[zones == ZONE_IDS[FaceZone.FOREHEAD], 0] = 75
+    lab[zones == ZONE_IDS[FaceZone.CHIN], 0] = 48
+    report = assess_quality(region, lab, zones)
+    assert report.ok and report.evenness == 27 and report.score == 1.0
+
+
+@pytest.mark.parametrize("vertical,cheeks,ok", [(32, 0, True), (33, 0, False), (27, 15, False)])
+def test_evenness_limits_apply_per_pair(vertical, cheeks, ok):
+    region, lab, zones = _capture()
+    for zone, value in ((FaceZone.FOREHEAD, 70), (FaceZone.CHIN, 70 - vertical),
+                        (FaceZone.LEFT_CHEEK, 60), (FaceZone.RIGHT_CHEEK, 60 - cheeks)):
+        lab[zones == ZONE_IDS[zone], 0] = value
+    report = assess_quality(region, lab, zones)
+    assert report.ok is ok and ("uneven_light" in report.issues) is not ok
+
+
+def test_both_pairs_uneven_report_one_issue():
+    region, lab, zones = _capture()
+    for zone, value in ((FaceZone.LEFT_CHEEK, 50), (FaceZone.RIGHT_CHEEK, 70),
+                        (FaceZone.FOREHEAD, 80), (FaceZone.CHIN, 40)):
+        lab[zones == ZONE_IDS[zone], 0] = value
+    report = assess_quality(region, lab, zones)
+    assert report.issues == ("uneven_light",) and report.evenness == 40
 
 
 def test_coverage_and_empty_skin():

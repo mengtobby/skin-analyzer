@@ -72,9 +72,17 @@ def test_timeout_leaves_previous_input_and_redacts():
         runner.switch_source("url:http://user:password@host/video?token=secret", .03)
     assert time.monotonic() - start < 1
     assert "password" not in str(error.value) and "secret" not in str(error.value)
-    assert "previous input is still active" in str(error.value)
+    assert str(error.value) == ("No frames received from the stream address; "
+                                "the previous input is still active")
     assert source.closed.wait(1)
     assert runner.source is old and old.opened and not resets
+
+
+def test_timeout_names_missing_camera():
+    runner, _ = runner_for(Source("camera:5", ready=False))
+    with pytest.raises(SourceSwitchError) as error:
+        runner.switch_source("camera:5", .03)
+    assert str(error.value) == "No frames received from camera 5; the previous input is still active"
 
 
 def test_same_spec_and_invalid_and_unconfigured():

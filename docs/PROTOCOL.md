@@ -115,7 +115,10 @@ Failed quality suppresses detection, tracker updates and metric smoothing, and
   returning (possibly different) person never sees earlier findings.
 
 Quality `score` is in [0, 1], rounded to two decimals. Measurements are rounded
-to one decimal. `brightness` and `evenness` use CIELAB L* units; `face_size_px`
+to one decimal. `brightness` and `evenness` use CIELAB L* units; `evenness` is the
+larger of the left/right cheek and forehead/chin median differences. `uneven_light`
+fires above 14 between the cheeks or above 32 between forehead and chin (ordinary
+overhead room light makes the forehead much brighter than the chin); `face_size_px`
 is eye-corner distance. Yaw and pitch are approximate degrees.
 `issues` contains zero or more of these codes:
 
