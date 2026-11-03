@@ -90,7 +90,7 @@ camera ─► capture thread (latest frame only)
 ```
 
 - **Face-relative coordinates.** Tracking and thresholds work in a coordinate frame tied to the eyes, with one unit equal to the distance between the outer eye corners (~90 mm). Head movement doesn't break tracks, and detector thresholds don't depend on how far you sit from the camera.
-- **Contrast against your own skin.** Every feature is detected as a difference from your face's own local baseline in CIELAB: a* for inflammation, L* for pigment, high-pass energy for texture, and a Hessian ridge filter for fine lines. Fixed colour thresholds would break across skin tones and lighting; local contrast doesn't.
+- **Contrast against your own skin.** Every feature is detected as a difference from your face's own local baseline in CIELAB: a* for inflammation, L* for pigment, high-pass energy for texture, and a Hessian ridge filter for fine lines. Fixed colour thresholds would break across skin tones and lighting; local contrast doesn't. On the nose, dark spots are also compared with the skin directly above and below them, so a shadow or highlight running down the nose under side light isn't reported as pigment.
 - **Calibrated on real frames.** Detector thresholds and score ranges were tuned on live webcam frames: false detections were measured on the real face as captured, and sensitivity by injecting realistic synthetic lesions into those same frames. Spots are seeded at a strict threshold and measured at half their own peak, so faint spots keep their true size and strong lesions aren't inflated by their surrounding redness.
 - **Analysis cadence.** Heavy analysis runs every second frame; in between, tracked lesions are re-projected through the face landmarks, so overlays stay locked to the face at full frame rate.
 - **Privacy.** Frames are never written to disk. The camera stream and reset endpoint only accept the app's own pages (origin and host checks). When the face has been gone for more than 1.5 s, all findings, tracks and scores are discarded, so the next person never sees earlier results.
@@ -143,7 +143,7 @@ The script exports the model to `backend/models/skin_yolov8_seg.onnx`. `--detect
 .venv\Scripts\python -m pytest -q backend   # backend tests (no camera or model needed)
 npm --prefix frontend test                  # frontend unit/component tests
 npm --prefix frontend run build             # strict type-check + production build
-npm --prefix frontend run e2e               # Playwright end-to-end (uses installed Edge, no camera)
+npm --prefix frontend run e2e               # Playwright end-to-end (headless Edge, no camera; failure traces go to %TEMP%\skin-analyzer-playwright)
 npm --prefix frontend run coverage          # frontend coverage report
 .venv\Scripts\python -m pytest -q backend --cov=skin_analyzer   # backend coverage (needs pytest-cov)
 .venv\Scripts\python -m bandit -r backend\skin_analyzer          # security scan

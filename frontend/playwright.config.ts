@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
@@ -5,6 +7,8 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "list",
+  // Outside the repo: Playwright empties this folder per run, which fails (EPERM) in synced folders.
+  outputDir: join(tmpdir(), "skin-analyzer-playwright"),
   use: {
     baseURL: "http://127.0.0.1:8765",
     headless: true,

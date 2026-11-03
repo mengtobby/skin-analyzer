@@ -18,5 +18,9 @@ export default defineConfig({
     globals: true,
     passWithNoTests: true,
     exclude: [...configDefaults.exclude, 'e2e/**'], // Playwright specs run via `npm run e2e`
+    coverage: {
+      include: ['src/**/*.{ts,tsx}'], // count untested source files, not configs
+      clean: false, // deleting the report folder can hang when the repo is in a synced folder (OneDrive)
+    },
   },
 })
