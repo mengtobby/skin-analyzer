@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SettingsPage } from "./settings/SettingsPage";
 import { useSkinStream } from "./stream/useSkinStream";
+import { cameraStatus } from "./stream/status";
 import { AppShell, Badge, ScanFaceIcon, SettingsIcon, Stepper } from "./ui";
 import { useAnalysisFlow, type Route } from "./flow/useAnalysisFlow";
 import { StartPage } from "./flow/StartPage";
@@ -39,10 +40,11 @@ export default function App() {
     return () => window.removeEventListener('analysis-restart', reset);
   }, [sendReset, clearReport]);
   const current = steps.findIndex(step => step.id === flow.route);
+  const status = cameraStatus(stream.connection, stream.stalled);
   return <AppShell nav={[
     { id: 'analyze', label: 'Analyze', href: '#start', icon: <ScanFaceIcon /> },
     { id: 'settings', label: 'Settings', href: '#settings', icon: <SettingsIcon /> },
-  ]} active={flow.route === 'settings' ? 'settings' : 'analyze'} right={<Badge tone={stream.connection === 'connected' ? 'success' : 'neutral'}>{stream.connection === 'connected' ? 'Camera connected' : 'Reconnecting'}</Badge>}>
+  ]} active={flow.route === 'settings' ? 'settings' : 'analyze'} right={<Badge tone={status.tone}>{status.label}</Badge>}>
     {flow.route !== 'settings' && <Stepper steps={steps} current={current} currentProgress={flow.route === 'camera' ? Math.max(progress, 0.1) : 0.5}
       onSelect={index => flow.go(steps[index].id as Route)} />}
     {flow.route === 'start' && <StartPage onStart={() => flow.go('camera')} />}

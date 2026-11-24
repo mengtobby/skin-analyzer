@@ -212,3 +212,54 @@ it("hides Type, flattens measurements, and renders each score value only once", 
     expect(tile.querySelector("svg text")).toBeNull();
   }
 });
+
+it("says plainly when nothing stood out and hides the empty filter", () => {
+  const data = snapshot(); data.header.tracks = [];
+  render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  expect(screen.getByText("No individual areas stood out in this capture.")).toBeVisible();
+  expect(screen.queryByText(/Select an area/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Filter areas" })).not.toBeInTheDocument();
+});
+
+it("shows when the capture was taken", () => {
+  const data = snapshot(); data.capturedAt = Date.UTC(2026, 10, 23, 14, 5);
+  const { container } = render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const time = container.querySelector(".result-heading time")!;
+  expect(time).toHaveAttribute("dateTime", "2026-11-23T14:05:00.000Z");
+  expect(time.textContent).toBe(new Date(data.capturedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+});
+
+it("explains a zero oiliness score as no visible shine", () => {
+  const data = snapshot(); data.header.metrics!.overall.oiliness = 0;
+  render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  const tile = screen.getByRole("heading", { name: "Oiliness" }).closest("section")!;
+  expect(tile).toHaveTextContent("No shine visible in this light");
+  expect(screen.getByRole("heading", { name: "Redness" }).closest("section")).toHaveTextContent("Visible red tones");
+});
+
+it("breaks scores down by facial area in anatomical order", () => {
+  const data = snapshot();
+  data.header.metrics!.zones = { chin: { redness: 50.4, texture: 20, oiliness: 30, pigmentation: 10 },
+    forehead: { redness: 12, texture: 8, oiliness: 61.6, pigmentation: 4 } };
+  render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  expect(screen.getByText("Scores by area")).toBeVisible();
+  const table = screen.getByRole("table", { name: "Scores by area" });
+  const rows = within(table).getAllByRole("row").slice(1);
+  expect(rows.map(row => within(row).getByRole("rowheader").textContent)).toEqual(["Forehead", "Chin"]);
+  expect(within(rows[0]).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["12", "8", "62", "4"]);
+  expect(within(rows[1]).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["50", "20", "30", "10"]);
+  expect(screen.queryByText(/An oiliness of 0/)).not.toBeInTheDocument();
+});
+
+it("explains zero oiliness in the area breakdown", () => {
+  const data = snapshot();
+  data.header.metrics!.zones = { nose: { redness: 5, texture: 5, oiliness: 0.2, pigmentation: 5 } };
+  render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  expect(screen.getByText("An oiliness of 0 means no shine was visible in this light, not that the skin is dry.")).toBeInTheDocument();
+});
+
+it("omits the area breakdown without zone scores", () => {
+  const data = snapshot(); data.header.metrics!.zones = {};
+  render(<ResultsPage snapshot={data} onContinue={vi.fn()} onRetake={vi.fn()} />);
+  expect(screen.queryByText("Scores by area")).not.toBeInTheDocument();
+});

@@ -13,6 +13,7 @@ interface LiveViewProps {
   headerRef: MutableRefObject<FrameHeader | null>;
   header: FrameHeader | null;
   connection: Connection;
+  stalled?: boolean;
   sendReset: () => void;
   scanProgress?: number;
 }
@@ -48,7 +49,7 @@ function drawFrame(canvas: HTMLCanvasElement | null, bitmap: ImageBitmap | null,
   }
   ctx.restore();
 }
-export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, scanProgress }: LiveViewProps) {
+export function LiveView({ bitmapRef, headerRef, header, connection, stalled = false, sendReset, scanProgress }: LiveViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const badgesRef = useRef<HTMLDivElement>(null);
   const [overlay, setOverlay] = useState(false);
@@ -87,8 +88,9 @@ export function LiveView({ bitmapRef, headerRef, header, connection, sendReset, 
           leader={{ x: placement.anchorX / header!.width * 100, y: placement.anchorY / header!.height * 100 }} side={placement.side}
           icon={<ScanFaceIcon />}>{LABEL_INFO[item.label].plural} {item.count}</FloatingBadge></span>;
       })}</div>
-      {(!header || !header.face || connection !== 'connected') && <p className="empty-camera" aria-hidden="true">
-        {!header || connection !== 'connected' ? 'Connecting to camera...' : 'No face detected - centre your face in even, diffuse light'}
+      {(!header || !header.face || connection !== 'connected' || stalled) && <p className="empty-camera" aria-hidden="true">
+        {connection === 'connected' && stalled ? 'The camera stopped sending frames. Check that it is uncovered and not in use by another app.'
+          : !header || connection !== 'connected' ? 'Connecting to camera...' : 'No face detected - centre your face in even, diffuse light'}
       </p>}
     </div>
     <div className="controls"><label><input type="checkbox" checked={overlay}

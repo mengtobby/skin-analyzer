@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useSkinStream } from "./useSkinStream";
+import { STALL_MS, useSkinStream } from "./useSkinStream";
+import { cameraStatus } from "./status";
 import { encodeFrame, frameFixture, healthFixture, reportFixture } from "../protocol/fixtures";
 
 class MockSocket {
@@ -157,4 +158,44 @@ it("clears errors on the next valid frame or message and clears telemetry on clo
   act(() => socket.onclose?.());
   expect(result.current.connection).toBe("reconnecting");
   expect(result.current.header).toBeNull();
+});
+
+describe("stalled camera", () => {
+  it("flags a connected stream that stops delivering frames and recovers on the next frame", async () => {
+    const { result } = renderHook(() => useSkinStream());
+    const socket = MockSocket.instances[0];
+    act(() => socket.onopen?.());
+    await act(async () => { await socket.onmessage?.({ data: encodeFrame() }); });
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(result.current.stalled).toBe(false);
+    act(() => { vi.advanceTimersByTime(STALL_MS); });
+    expect(result.current.stalled).toBe(true);
+    await act(async () => { await socket.onmessage?.({ data: encodeFrame({ ...frameFixture, frame_id: 2 }) }); });
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(result.current.stalled).toBe(false);
+  });
+
+  it("flags a connection that never receives a frame but not a disconnected one", () => {
+    const { result } = renderHook(() => useSkinStream());
+    act(() => { vi.advanceTimersByTime(STALL_MS + 1000); });
+    expect(result.current.stalled).toBe(false);
+    act(() => MockSocket.instances[0].onopen?.());
+    act(() => { vi.advanceTimersByTime(STALL_MS - 1); });
+    expect(result.current.stalled).toBe(false);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(result.current.stalled).toBe(true);
+    act(() => MockSocket.instances[0].onclose?.());
+    expect(result.current.stalled).toBe(false);
+  });
+});
+
+describe("cameraStatus", () => {
+  it.each([
+    ["connected", false, "Camera connected", "success"],
+    ["connected", true, "No camera frames", "warning"],
+    ["connecting", false, "Connecting", "neutral"],
+    ["reconnecting", true, "Reconnecting", "neutral"],
+  ] as const)("%s stalled=%s -> %s", (connection, stalled, label, tone) => {
+    expect(cameraStatus(connection, stalled)).toEqual({ label, tone });
+  });
 });

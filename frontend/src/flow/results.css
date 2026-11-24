@@ -36,6 +36,14 @@
 .skin-score-value { font-size: 2rem; font-weight: 600; margin: 12px 0 4px; font-variant-numeric: tabular-nums; }
 .skin-score-value span { font-size: .875rem; color: var(--muted, #75716b); font-weight: 400; }
 .skin-scores .result-muted { font-size: .875rem; margin: 0; }
+.zone-scores { margin-top: 16px; }
+.zone-scores summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+.zone-scores table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.zone-scores th, .zone-scores td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border, #ebe8e3); }
+.zone-scores th:first-child { text-align: left; }
+.zone-scores thead th { font-size: .875rem; font-weight: 500; color: var(--muted, #75716b); }
+.zone-scores tbody th { font-weight: 500; }
+@media (max-width: 520px) { .zone-scores th, .zone-scores td { padding: 8px 6px; font-size: .875rem; } }
 .result-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; border-top: 1px solid var(--border, #ebe8e3); padding-top: 24px; }
 .ingredient-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 24px; container-type: inline-size; }
 .ingredient-score { display: flex; justify-content: space-between; gap: 12px; font-size: .875rem; margin: 20px 0 8px; }

@@ -4,15 +4,22 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CameraPage } from "./CameraPage";
 import { frameFixture, qualityFixture, reportFixture } from "../protocol/fixtures";
 import type { SkinStream } from "./useScan";
+import type { FrameHeader } from "../protocol/types";
 import { readFileSync } from "node:fs";
 import { URL as NodeURL } from "node:url";
 const flowCss = readFileSync(new NodeURL("./flow.css", import.meta.url), "utf-8");
 vi.mock('../components/LiveView', () => ({ LiveView: ({ scanProgress }: { scanProgress?: number }) => <div data-testid="live-camera" data-scan-progress={scanProgress}>Live camera</div> }));
+/** A ref that behaves like a live camera: every read is a new frame of the stored header. */
+function liveRef(initial: FrameHeader | null): { current: FrameHeader | null } {
+  let value = initial, frames = 0;
+  return { get current() { return value && { ...value, frame_id: value.frame_id + ++frames }; },
+    set current(next) { value = next; } };
+}
 function stream(): SkinStream {
   const header = { ...frameFixture, quality: { ...qualityFixture, ok: true, issues: [] } };
-  return { header, headerRef: { current: header }, displayHeaderRef: { current: header },
+  return { header, headerRef: liveRef(header), displayHeaderRef: { current: header },
     bitmapRef: { current: {} as ImageBitmap }, report: reportFixture, health: null,
-    connection: 'connected', error: null, sendReset: vi.fn(), clearReport: vi.fn() };
+    connection: 'connected', stalled: false, error: null, sendReset: vi.fn(), clearReport: vi.fn() };
 }
 beforeEach(() => {
   vi.useFakeTimers();
@@ -181,4 +188,34 @@ it('reads quality issues once, through the guidance live region', () => {
   render(<CameraPage stream={{ ...s, header: { ...s.header!, quality: qualityFixture } }} onCapture={vi.fn()} />);
   const list = document.querySelector('.quality-banner ul');
   expect(list).toHaveAttribute('aria-hidden', 'true');
+});
+it('blocks scanning and explains a stalled camera, then aborts a running scan', () => {
+  const s = stream(); const onCapture = vi.fn();
+  const { rerender } = render(<CameraPage stream={{ ...s, stalled: true }} onCapture={onCapture} />);
+  expect(screen.getByRole('button', { name: 'Analyze my skin' })).toBeDisabled();
+  expect(screen.getByText('No camera frames', { exact: true })).toBeVisible();
+  expect(screen.getByRole('status')).toHaveTextContent('The camera stopped sending frames');
+  expect(screen.queryByText('Face found. Keep looking straight ahead.')).not.toBeInTheDocument();
+  rerender(<CameraPage stream={s} onCapture={onCapture} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  rerender(<CameraPage stream={{ ...s, stalled: true }} onCapture={onCapture} />);
+  act(() => vi.advanceTimersByTime(1700));
+  expect(screen.getByRole('alert')).toHaveTextContent('lost a clear view'); expect(onCapture).not.toHaveBeenCalled();
+});
+it('cancels a running scan with Escape', () => {
+  const onCapture = vi.fn(); render(<CameraPage stream={stream()} onCapture={onCapture} />);
+  fireEvent.keyDown(window, { key: 'Escape' });
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  expect(screen.getByRole('button', { name: 'Cancel scan' })).toBeVisible();
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(screen.getByRole('button', { name: 'Analyze my skin' })).toBeVisible();
+  act(() => vi.advanceTimersByTime(7000)); expect(onCapture).not.toHaveBeenCalled();
+});
+it('aborts instead of capturing when the camera freezes mid-scan', () => {
+  const s = { ...stream() }; s.headerRef = { current: s.header }; const onCapture = vi.fn();
+  render(<CameraPage stream={s} onCapture={onCapture} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze my skin' }));
+  act(() => vi.advanceTimersByTime(2900));
+  expect(screen.getByRole('alert')).toHaveTextContent('lost a clear view');
+  act(() => vi.advanceTimersByTime(5000)); expect(onCapture).not.toHaveBeenCalled();
 });

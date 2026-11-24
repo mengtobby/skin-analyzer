@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { useSkinStream } from "../stream/useSkinStream";
 import { captureSnapshot, type AnalysisSnapshot } from "./snapshot";
 import type { FrameHeader } from "../protocol/types";
 export type SkinStream = ReturnType<typeof useSkinStream>;
+/** During a scan, a frame that has not been replaced for this long counts as unusable, so a
+ * camera that freezes mid-scan aborts instead of capturing a stale frame. Much shorter than
+ * the stream's stall badge, which would only trip after the 3-second scan has finished. */
+const FROZEN_MS = 1000;
 export function useScan(stream: SkinStream, onCapture: (snapshot: AnalysisSnapshot) => void) {
   const latest = useRef({ stream, onCapture });
   latest.current = { stream, onCapture };
@@ -17,11 +21,15 @@ export function useScan(stream: SkinStream, onCapture: (snapshot: AnalysisSnapsh
     // One reusable buffer, refreshed only when a new frame is displayed (not every poll).
     let buffer: HTMLCanvasElement | null = null;
     let copiedFrameId: number | null = null;
+    let lastFrameId: number | undefined;
+    let lastFrameAt = Date.now();
     const timer = window.setInterval(() => {
       const { stream: current, onCapture: finish } = latest.current;
       const elapsed = Date.now() - started;
       const header = current.headerRef.current;
-      const good = current.connection === 'connected' && header?.face && header.quality?.ok;
+      if (header?.frame_id !== lastFrameId) { lastFrameId = header?.frame_id; lastFrameAt = Date.now(); }
+      const frozen = Date.now() - lastFrameAt > FROZEN_MS;
+      const good = current.connection === 'connected' && !current.stalled && !frozen && header?.face && header.quality?.ok;
       if (!good) badSince ??= Date.now(); else badSince = null;
       if (badSince !== null && Date.now() - badSince > 1500) {
         setError('We lost a clear view of your face. Adjust your position and try again.');
@@ -53,7 +61,7 @@ export function useScan(stream: SkinStream, onCapture: (snapshot: AnalysisSnapsh
     }, 100);
     return () => window.clearInterval(timer);
   }, [started]);
-  return { scanning: started !== null, progress, error,
-    start: () => { initialReport.current = stream.report; setError(null); setProgress(0); setStarted(Date.now()); },
-    cancel: () => { setStarted(null); setProgress(0); } };
+  const cancel = useCallback(() => { setStarted(null); setProgress(0); }, []);
+  return { scanning: started !== null, progress, error, cancel,
+    start: () => { initialReport.current = stream.report; setError(null); setProgress(0); setStarted(Date.now()); } };
 }

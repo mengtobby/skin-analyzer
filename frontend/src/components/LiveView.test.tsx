@@ -275,3 +275,14 @@ it.each([false, true])('sweeps mesh tint and respects reduced motion (%s)', redu
   expect(ctx.fillRect).toHaveBeenCalledTimes(reducedMotion ? 0 : 1);
   expect(screen.getByRole('checkbox', { name: 'Show detection overlay' })).not.toBeChecked();
 });
+
+it("explains a stalled camera over a face frame", () => {
+  const header = frameFixture;
+  const props = { bitmapRef: { current: null }, headerRef: { current: header }, header, sendReset: vi.fn() };
+  const { rerender } = render(<LiveView {...props} connection="connected" />);
+  expect(screen.queryByText(/stopped sending frames/)).not.toBeInTheDocument();
+  rerender(<LiveView {...props} connection="connected" stalled />);
+  expect(screen.getByText(/The camera stopped sending frames/)).toBeVisible();
+  rerender(<LiveView {...props} connection="reconnecting" stalled />);
+  expect(screen.getByText("Connecting to camera...")).toBeVisible();
+});

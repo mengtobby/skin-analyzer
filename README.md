@@ -18,6 +18,8 @@ Everything runs locally. No frames leave the machine.
 
 Requirements: Python 3.12, Node 20+, a webcam. On first start the MediaPipe face model (~3.7 MB) is downloaded and verified against a pinned SHA-256.
 
+`start.ps1` keeps itself up to date: it reinstalls Python or frontend dependencies when `backend\requirements.txt` or `frontend\package-lock.json` changes, and rebuilds the dashboard when any frontend source is newer than the last build (for example after a `git pull`).
+
 Manual setup:
 
 ```powershell
@@ -36,8 +38,8 @@ The app checks every analysed frame for brightness, even lighting, face size and
 ## Using the guided analysis
 
 1. **Start:** review the lighting and positioning tips, then select **Start analyzing**.
-2. **Camera:** wait for a face and passing capture quality, then select **Analyze my skin**. Hold still for the three-second scan; you can cancel at any time. The app waits briefly for a fresh report before continuing.
-3. **Results:** select a highlighted blemish to explore its cosmetic guidance. Retake the image or continue to treatments.
+2. **Camera:** wait for a face and passing capture quality, then select **Analyze my skin**. Hold still for the three-second scan; you can cancel at any time with **Cancel scan** or Esc. The app waits briefly for a fresh report before continuing. If the camera stops sending frames (covered, unplugged or taken by another app), the status badge shows **No camera frames** and scanning is paused until frames return.
+3. **Results:** select a highlighted blemish to explore its cosmetic guidance. Open **Scores by area** to compare forehead, nose, cheeks and chin. Retake the image or continue to treatments.
 4. **Treatments:** review suggested ingredients and morning/evening routines. **Start a new analysis** clears the capture and findings and resets tracking.
 
 | Start | Camera | Treatments | Phone |
@@ -180,6 +182,6 @@ tools/             model training / export
 - Scores are heuristic and not clinically calibrated. Treat them as relative indicators to track over time under similar lighting.
 - A webcam can't see depth. Raised lesions are told apart from flat marks by colour contrast alone, so a learned model trained on labelled data does better.
 - Calibration so far comes from one person in one lighting setup. Because every feature is measured against the person's own skin it should transfer, but other skin tones and cameras haven't been verified yet.
-- Oiliness has not been calibrated (no shine was present during calibration).
+- Oiliness has not been calibrated. It measures visible shine (specular highlights), which only appears under a fairly direct light; in soft, diffuse light even oily or moisturised skin shows none, so a score of 0 is shown as *No shine visible in this light* rather than as dry skin.
 - The nose tip, nostrils and nasal sidewalls are excluded from spot detection: on a webcam their shadows are indistinguishable from pigmented spots.
 - The named products are examples of formulations that contain the suggested ingredients, not endorsements.

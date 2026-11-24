@@ -1,19 +1,21 @@
-import type { SkinMetrics } from "../protocol/types";
+import type { SkinMetrics, ZoneMetrics } from "../protocol/types";
 import { Card, ScoreRing } from "../ui";
+import { SCORES, scoreValue } from "./scores";
 
-const scores = [
-  ["redness", "Redness", "Visible red tones"], ["texture", "Texture", "Surface unevenness"],
-  ["oiliness", "Oiliness", "Visible surface shine"], ["pigmentation", "Pigmentation", "Uneven dark tones"],
-] as const;
+
+/** Oiliness only measures specular shine, which diffuse light never produces, so a zero
+ * says nothing about dry skin; describe what was actually observed. */
+function meaningFor(key: keyof ZoneMetrics, score: number, meaning: string): string {
+  return key === "oiliness" && score === 0 ? "No shine visible in this light" : meaning;
+}
 
 export function SkinScores({ metrics }: { metrics: SkinMetrics | null }) {
   return <section aria-label="Overall skin scores" className="skin-scores">
-    {scores.map(([key, name, meaning]) => {
-      const raw = metrics?.overall[key];
-      const score = raw !== undefined && Number.isFinite(raw) ? Math.round(Math.max(0, Math.min(100, raw))) : null;
+    {SCORES.map(([key, name, meaning]) => {
+      const score = scoreValue(metrics?.overall[key]);
       return <Card key={key}><ScoreRing value={score} label={name} decorative showValue={false} /><h3>{name}</h3>
-        <p className="skin-score-value">{score ?? "\u2014"}<span> / 100</span></p>
-        <p className="result-muted">{score === null ? "Score unavailable" : meaning}</p></Card>;
+        <p className="skin-score-value">{score ?? "—"}<span> / 100</span></p>
+        <p className="result-muted">{score === null ? "Score unavailable" : meaningFor(key, score, meaning)}</p></Card>;
     })}
   </section>;
 }

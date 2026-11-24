@@ -5,6 +5,7 @@ import { BlemishMap } from "./BlemishMap";
 import { BlemishDetail } from "./BlemishDetail";
 import { BlemishList } from "./BlemishList";
 import { SkinScores } from "./SkinScores";
+import { ZoneScores } from "./ZoneScores";
 import type { Label } from "../protocol/types";
 import { areaName, LABEL_INFO } from "../lib/blemishInfo";
 import "./results.css";
@@ -27,12 +28,14 @@ export function ResultsPage({ snapshot, onContinue, onRetake }: {
     setAnnouncement(`Showing ${areaName(next, group.findIndex(item => item.id === id))}`);
   }
   const count = snapshot.header.tracks.length;
+  const captured = new Date(snapshot.capturedAt);
   return <div className="analysis-results">
     <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
-    <header className="result-heading"><h1>Your results</h1><p>{count} {count === 1 ? "area" : "areas"} to look at. Select an area to learn more.</p></header>
+    <header className="result-heading"><h1>Your results</h1><p>{count ? `${count} ${count === 1 ? "area" : "areas"} to look at. Select an area to learn more.` : "No individual areas stood out in this capture."}
+      {" "}<span className="result-muted">Captured at <time dateTime={captured.toISOString()}>{captured.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time></span></p></header>
     <div className="results-layout"><div>
       <BlemishMap tracks={visibleTracks} snapshot={snapshot} selected={track?.id} onSelect={selectArea} detailId={detailId} />
-      <ChipGroup label="Filter areas">
+      {count > 0 && <ChipGroup label="Filter areas">
         <Chip pressed={filter === "all"} onClick={() => setFilter("all")}>All</Chip>
         {[...new Set(snapshot.header.tracks.map(item => item.label))].map(label =>
           <Chip key={label} pressed={filter === label} onClick={() => {
@@ -42,11 +45,11 @@ export function ResultsPage({ snapshot, onContinue, onRetake }: {
               if (next) selectArea(next.id);
             }
           }}>{LABEL_INFO[label].plural}</Chip>)}
-      </ChipGroup>
+      </ChipGroup>}
       <BlemishList tracks={visibleTracks} selected={track?.id} onSelect={selectArea} detailId={detailId} />
     </div><BlemishDetail id={detailId} track={track} report={snapshot.report} /></div>
     <section><h2>Your skin at a glance</h2><p className="result-muted">Appearance scores from this capture. Higher values mean more visible signs.</p>
-      <SkinScores metrics={snapshot.header.metrics} /></section>
+      <SkinScores metrics={snapshot.header.metrics} /><ZoneScores metrics={snapshot.header.metrics} /></section>
     <footer className="result-actions">
       <button type="button" className="recommendation-row" onClick={onContinue}><span className="recommendation-icon" aria-hidden="true"><SparkleIcon /></span><span>See treatments</span><span className="recommendation-arrow" aria-hidden="true"><ArrowRightIcon /></span></button>
       <Button variant="secondary" icon={<RefreshIcon />} onClick={onRetake}>Retake</Button></footer>

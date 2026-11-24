@@ -3,6 +3,10 @@ import { startConnection, type Connection } from "./connection";
 export type { Connection } from "./connection";
 import type { FrameHeader, Health, Report } from "../protocol/types";
 
+/** A connected stream with no new frame for this long is reported as stalled
+ * (camera covered, unplugged or taken by another app; phone stream paused). */
+export const STALL_MS = 3000;
+
 export function useSkinStream() {
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const headerRef = useRef<FrameHeader | null>(null);
@@ -13,11 +17,20 @@ export function useSkinStream() {
   const [health, setHealth] = useState<Health | null>(null);
   const [connection, setConnection] = useState<Connection>("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [stalled, setStalled] = useState(false);
 
   useEffect(() => startConnection({
     bitmapRef, headerRef, displayHeaderRef, socketRef, setHeader,
     setHealth, setReport, setError, setConnection,
   }), []);
+
+  // `header` only changes identity when a new frame arrives, so this restarts per frame.
+  useEffect(() => {
+    setStalled(false);
+    if (connection !== "connected") return;
+    const timer = setTimeout(() => setStalled(true), STALL_MS);
+    return () => clearTimeout(timer);
+  }, [header, connection]);
 
   const sendReset = () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -28,7 +41,7 @@ export function useSkinStream() {
   // reset or input switch, but this window drops the old findings without waiting for it.
   const clearReport = () => setReport(null);
   return {
-    bitmapRef, headerRef, displayHeaderRef, header, report, health, connection, error, sendReset,
+    bitmapRef, headerRef, displayHeaderRef, header, report, health, connection, stalled, error, sendReset,
     clearReport,
   };
 }
